@@ -12,7 +12,7 @@ void main() {
   ) async {
     await tester.pumpWidget(const GrudgeApp());
 
-    expect(find.text('Grudge — T-101 scaffold check'), findsOneWidget);
+    expect(find.text('Grudge — T-102 scaffold check'), findsOneWidget);
     expect(find.text('Query WatcherCore via Pigeon'), findsOneWidget);
   });
 }

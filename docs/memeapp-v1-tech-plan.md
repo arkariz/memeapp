@@ -212,7 +212,7 @@ Sizes: **S** ≤ 1 day · **M** 2–4 days · **L** ~1 week. Solo-dev estimates.
 | ID | Task | Size | Depends | PRD |
 |---|---|---|---|---|
 | T-101 | ~~Repo scaffold: Flutter app + Kotlin core module + Pigeon contracts + CI debug build~~ — **done**, started ahead of T-002's formal sign-off per explicit direction; app/ builds clean (`flutter analyze` 0 issues, test passes, debug APK builds) | M | T-002 | — |
-| T-102 | Port spike → WatcherService with SessionStateMachine; heartbeat writer | M | T-101 | P0-2 |
+| T-102 | ~~Port spike → WatcherService with SessionStateMachine; heartbeat writer~~ — **done**, 11/11 unit tests pass, verified live on emulator (real heartbeat, real IDLE→INTENT_PENDING transition on Chrome open) | M | T-101 | P0-2 |
 | T-103 | Room schema + DAOs + grant-reload-on-restart | M | T-101 | P0-2 |
 | T-104 | Intent-capture overlay (native): chips, focusable text input, ≤2-tap grant, latency telemetry | L | T-102 | P0-2 |
 | T-105 | RoastEngine: template loader, tier selection, slot filler, precompute-at-grant | M | T-103, T-004 | P0-3 |

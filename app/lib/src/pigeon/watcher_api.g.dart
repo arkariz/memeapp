@@ -104,16 +104,28 @@ class WatcherStatusDto {
   WatcherStatusDto({
     required this.isRunning,
     this.heartbeatAgeMs,
+    required this.hasUsageAccess,
+    required this.hasOverlayPermission,
+    required this.activeSessionCount,
   });
 
   bool isRunning;
 
   int? heartbeatAgeMs;
 
+  bool hasUsageAccess;
+
+  bool hasOverlayPermission;
+
+  int activeSessionCount;
+
   List<Object?> _toList() {
     return <Object?>[
       isRunning,
       heartbeatAgeMs,
+      hasUsageAccess,
+      hasOverlayPermission,
+      activeSessionCount,
     ];
   }
 
@@ -125,6 +137,9 @@ class WatcherStatusDto {
     return WatcherStatusDto(
       isRunning: result[0]! as bool,
       heartbeatAgeMs: result[1] as int?,
+      hasUsageAccess: result[2]! as bool,
+      hasOverlayPermission: result[3]! as bool,
+      activeSessionCount: result[4]! as int,
     );
   }
 
@@ -137,7 +152,7 @@ class WatcherStatusDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(isRunning, other.isRunning) && _deepEquals(heartbeatAgeMs, other.heartbeatAgeMs);
+    return _deepEquals(isRunning, other.isRunning) && _deepEquals(heartbeatAgeMs, other.heartbeatAgeMs) && _deepEquals(hasUsageAccess, other.hasUsageAccess) && _deepEquals(hasOverlayPermission, other.hasOverlayPermission) && _deepEquals(activeSessionCount, other.activeSessionCount);
   }
 
   @override
@@ -146,7 +161,7 @@ class WatcherStatusDto {
 
   @override
   String toString() {
-    return 'WatcherStatusDto(isRunning: $isRunning, heartbeatAgeMs: $heartbeatAgeMs)';
+    return 'WatcherStatusDto(isRunning: $isRunning, heartbeatAgeMs: $heartbeatAgeMs, hasUsageAccess: $hasUsageAccess, hasOverlayPermission: $hasOverlayPermission, activeSessionCount: $activeSessionCount)';
   }
 }
 
@@ -177,7 +192,10 @@ class _PigeonCodec extends StandardMessageCodec {
   }
 }
 
-/// Dart -> Kotlin: queries the app module implements against WatcherCore.
+/// Dart -> Kotlin: queries/commands the app module implements against
+/// WatcherCore. startWatcher is a dev/test affordance for T-102 — the real
+/// product starts the service from onboarding completion (T-109), not a
+/// manual button.
 class WatcherHostApi {
   /// Constructor for [WatcherHostApi]. The [binaryMessenger] named argument is
   /// available for dependency injection. If it is left null, the default
@@ -208,5 +226,23 @@ class WatcherHostApi {
     )
     ;
     return pigeonVar_replyValue! as WatcherStatusDto;
+  }
+
+  Future<void> startWatcher() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.startWatcher$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 }

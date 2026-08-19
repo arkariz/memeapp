@@ -15,6 +15,16 @@ class MainActivity : FlutterActivity() {
 private class WatcherApiHandler(private val activity: MainActivity) : WatcherHostApi {
     override fun getStatus(): WatcherStatusDto {
         val status = WatcherCore.status(activity)
-        return WatcherStatusDto(isRunning = status.isRunning, heartbeatAgeMs = status.heartbeatAgeMs)
+        return WatcherStatusDto(
+            isRunning = status.isRunning,
+            heartbeatAgeMs = status.heartbeatAgeMs,
+            hasUsageAccess = status.hasUsageAccess,
+            hasOverlayPermission = status.hasOverlayPermission,
+            activeSessionCount = status.activeSessionCount.toLong(),
+        )
+    }
+
+    override fun startWatcher() {
+        WatcherCore.startWatcher(activity)
     }
 }

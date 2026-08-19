@@ -201,20 +201,29 @@ class FlutterError (
  */
 data class WatcherStatusDto (
   val isRunning: Boolean,
-  val heartbeatAgeMs: Long? = null
+  val heartbeatAgeMs: Long? = null,
+  val hasUsageAccess: Boolean,
+  val hasOverlayPermission: Boolean,
+  val activeSessionCount: Long
 )
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): WatcherStatusDto {
       val isRunning = pigeonVar_list[0] as Boolean
       val heartbeatAgeMs = pigeonVar_list[1] as Long?
-      return WatcherStatusDto(isRunning, heartbeatAgeMs)
+      val hasUsageAccess = pigeonVar_list[2] as Boolean
+      val hasOverlayPermission = pigeonVar_list[3] as Boolean
+      val activeSessionCount = pigeonVar_list[4] as Long
+      return WatcherStatusDto(isRunning, heartbeatAgeMs, hasUsageAccess, hasOverlayPermission, activeSessionCount)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
       isRunning,
       heartbeatAgeMs,
+      hasUsageAccess,
+      hasOverlayPermission,
+      activeSessionCount,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -225,17 +234,20 @@ data class WatcherStatusDto (
       return true
     }
     val other = other as WatcherStatusDto
-    return WatcherApiPigeonUtils.deepEquals(this.isRunning, other.isRunning) && WatcherApiPigeonUtils.deepEquals(this.heartbeatAgeMs, other.heartbeatAgeMs)
+    return WatcherApiPigeonUtils.deepEquals(this.isRunning, other.isRunning) && WatcherApiPigeonUtils.deepEquals(this.heartbeatAgeMs, other.heartbeatAgeMs) && WatcherApiPigeonUtils.deepEquals(this.hasUsageAccess, other.hasUsageAccess) && WatcherApiPigeonUtils.deepEquals(this.hasOverlayPermission, other.hasOverlayPermission) && WatcherApiPigeonUtils.deepEquals(this.activeSessionCount, other.activeSessionCount)
   }
 
   override fun hashCode(): Int {
     var result = javaClass.hashCode()
     result = 31 * result + WatcherApiPigeonUtils.deepHash(this.isRunning)
     result = 31 * result + WatcherApiPigeonUtils.deepHash(this.heartbeatAgeMs)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.hasUsageAccess)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.hasOverlayPermission)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.activeSessionCount)
     return result
   }
   override fun toString(): String {
-    return "WatcherStatusDto(isRunning=$isRunning, heartbeatAgeMs=$heartbeatAgeMs)"
+    return "WatcherStatusDto(isRunning=$isRunning, heartbeatAgeMs=$heartbeatAgeMs, hasUsageAccess=$hasUsageAccess, hasOverlayPermission=$hasOverlayPermission, activeSessionCount=$activeSessionCount)"
   }
 }
 private open class WatcherApiPigeonCodec : StandardMessageCodec() {
@@ -261,12 +273,16 @@ private open class WatcherApiPigeonCodec : StandardMessageCodec() {
 }
 
 /**
- * Dart -> Kotlin: queries the app module implements against WatcherCore.
+ * Dart -> Kotlin: queries/commands the app module implements against
+ * WatcherCore. startWatcher is a dev/test affordance for T-102 — the real
+ * product starts the service from onboarding completion (T-109), not a
+ * manual button.
  *
  * Generated interface from Pigeon that represents a handler of messages from Flutter.
  */
 interface WatcherHostApi {
   fun getStatus(): WatcherStatusDto
+  fun startWatcher()
 
   companion object {
     /** The codec used by WatcherHostApi. */
@@ -283,6 +299,22 @@ interface WatcherHostApi {
           channel.setMessageHandler { _, reply ->
             val wrapped: List<Any?> = try {
               listOf(api.getStatus())
+            } catch (exception: Throwable) {
+              WatcherApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.startWatcher$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              api.startWatcher()
+              listOf(null)
             } catch (exception: Throwable) {
               WatcherApiPigeonUtils.wrapError(exception)
             }
