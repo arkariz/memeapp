@@ -141,9 +141,44 @@ RoastEngine loads whichever validates (schema version + asset sha256). A bad dow
 
 **Images & GIFs:** prefer animated WebP (smaller, better quality); GIF decodes through the same `ImageDecoder`/`AnimatedImageDrawable` path on minSdk 29, so both work. Flutter renders the same files on the cards side. Validator caps: ~2 MB per asset, ~15 MB per pack.
 
+**v1 content drafted (T-004):** [`assets/roast_pack_v1/roast_pack.json`](../assets/roast_pack_v1/roast_pack.json) — 40 templates (15 tier 1, 13 tier 2, 12 tier 3), each with slots, an iOS two-line `degrade`, and an asset ref; 28/40 render duration-only (no intent text required). Tone lexicon rules are written down in [`assets/roast_pack_v1/TONE_GUIDE.md`](../assets/roast_pack_v1/TONE_GUIDE.md) — the roast-vs-shame test every template must pass, plus the escalation shape (tiers get *drier*, never *meaner*). Asset refs (`side_eye`, `unimpressed_cat`, `confused_math`, `philosoraptor`, `surprised`, `stonks`, `this_is_fine`, `waiting`) are concept placeholders for T-005's original artwork — no third-party template art ships in the production APK.
+
 **Pack GC rule:** `roast_payload` resolves asset paths at grant time, so a mid-session pack swap must not delete files a live payload references — old pack directories are deleted on service start only, never on swap. Display must never be able to fail.
 
 **Why this is product-critical, not hygiene:** the habituation tripwire's first response lever is a copy refresh without an app release (a pack push), and the meme-licensing plan is "ship placeholders in beta, push the commissioned originals (T-005) as a pack." Both depend on this pipeline existing before the day-14 checkpoint — hence T-207 sits in Phase 2, not Phase 3.
+
+### 7c. Live meme GIFs via Tenor (decided 2026-08-19, supersedes bundled-only)
+
+**Bundled illustration is now the offline fallback, not the primary experience.** Primary is a real GIF fetched from Tenor's API. This changes the pipeline but not the precompute principle — a live fetch still can't happen on the roast's hot path, so it moves to grant time, same as everything else in §5.
+
+**Why Tenor:** free API tier, native to the Android ecosystem, straightforward attribution requirement (a small "GIF via Tenor" caption — same visual weight as the existing roast-overlay captions already in the Figma design). GIPHY is a reasonable swap; the provider sits behind one interface so this is a low-regret choice.
+
+**Flow — mirrors the RoastEngine precompute exactly:**
+
+```
+GRANT (or extension) →
+  RoastEngine picks template → template.asset gives a mood id
+  → MemeGifProvider.fetch(mood, contentfilter="high"), budget ~3s
+      success → download GIF/MP4 rendition → cache to filesDir,
+                write gif_source=TENOR + local path into roast_payload
+      timeout / no network / API error → write gif_source=BUNDLED,
+                roast_payload points at the existing WebP (§7 pipeline, unchanged)
+EXPIRY → roast overlay reads roast_payload → renders whichever source
+          is already resolved. Zero network calls at display time.
+```
+
+The 3s budget lives inside the *grant* flow, which already has slack — the intent-capture UI is showing a confirmation, not racing the 1.5s roast-latency budget from §1. If Tenor is slow or the phone has no signal, the fallback is silent and instant: the user just sees the mascot instead of a live GIF for that one roast, never a blank frame or a spinner.
+
+**Data model addition** — `roast_payload` gains two fields: `gif_source` (`TENOR` | `BUNDLED`) and `gif_local_path`. `roast_pack.json`'s `moods` map (parallel to `assets`, same keys) carries the Tenor search query seeds — every template's existing `asset` id already doubles as a mood id, so **no per-template changes were needed**.
+
+**Non-negotiable per Tenor's terms (verify exact current wording at integration time — API terms drift):**
+- `contentfilter=high` on every search call — general-audience safe search, no exceptions. Ties directly to the tone guide's "never shame, never surprise the user with something inappropriate" spirit.
+- Visible attribution in the UI wherever a fetched GIF is shown.
+- Call Tenor's share-registration endpoint when a GIF is actually used (their recommended usage-tracking practice).
+- API key in build config, not committed to source control.
+- Cache locally for the session's lifetime; don't treat the cache as a permanent redistribution store.
+
+**Why this stays out of Phase 1:** the core loop (T-101–T-112) ships and gets beta-tested on the *bundled-only* path first — proving the mechanism works without a network dependency in the mix. Tenor is layered on in Phase 2 once that foundation is solid, so a GIF-fetch bug can never take down the core product, only degrade one roast's visual to the mascot fallback.
 
 ## 8. Testing Strategy
 
@@ -169,8 +204,8 @@ Sizes: **S** ≤ 1 day · **M** 2–4 days · **L** ~1 week. Solo-dev estimates.
 | T-001 | Real-device latency validation: run spike on a physical mid-tier phone, record p50/p90, formal go/no-go | S | — | Risk 3 |
 | T-002 | Confirm stack decision (default: Flutter host + Kotlin core) after T-001 | S | T-001 | OQ |
 | T-003 | Draft Play Console Usage Access declaration; create internal testing track | S | — | Timeline |
-| T-004 | **Write roast template pack v1**: 40 templates × 3 escalation tiers, each with slots + two-line degradation; tone lexicon rules (roast vs shame) written first | M | — | P0-3, OQ |
-| T-005 | Original meme asset set v1 (6–10 images, licensing-clean, meme-format compositions) | M | — | OQ design |
+| T-004 | ~~Write roast template pack v1~~ — **done**, see §7 and `assets/roast_pack_v1/` | M | — | P0-3, OQ |
+| T-005 | ~~Original meme asset set v1~~ — **brief done**, see [meme asset brief](memeapp-meme-asset-brief.md); production (illustration commission or in-house) still pending | M | — | OQ design |
 
 ### Phase 1 — Core loop (exit: closed beta, instrumented, on all matrix devices)
 
@@ -200,6 +235,8 @@ Sizes: **S** ≤ 1 day · **M** 2–4 days · **L** ~1 week. Solo-dev estimates.
 | T-205 | Onboarding per-step funnel instrumentation | S | T-203, T-109 | Metrics |
 | T-206 | Staged rollout config + **calendar the day-14 checkpoint as a decision meeting** | S | T-204 | Risk 1 |
 | T-207 | Remote copy packs: static manifest + WorkManager fetch, hash verify, atomic swap, GC rule (see §7) — **must exist before the day-14 checkpoint** | M | T-105 | P1 |
+| T-208 | Tenor integration: `MemeGifProvider` interface, search-by-mood, `contentfilter=high`, API key in build config, share-registration call (see §7c) | M | T-105 | OQ (2026-08-19) |
+| T-209 | Grant-time GIF prefetch/cache + `gif_source`/`gif_local_path` on `roast_payload`, silent fallback to bundled WebP on timeout/no-network, Tenor attribution UI | M | T-208, T-105 | OQ (2026-08-19) |
 
 ### Phase 3 — Data-driven (sequenced by day-14 checkpoint data)
 

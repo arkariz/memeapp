@@ -1,0 +1,11 @@
+<svg width="960" height="640" viewBox="0 0 960 640" xmlns="http://www.w3.org/2000/svg">
+  <rect x="280.0" y="150.0" width="400" height="380" rx="130" ry="130" fill="#FFE600" stroke="#0D0D0D" stroke-width="24" stroke-linejoin="round"/>
+  <g transform="rotate(-35 310 310)"><rect x="278.0" y="122.0" width="64" height="220" rx="32.0" fill="#FFE600" stroke="#0D0D0D" stroke-width="16"/></g>
+  <g transform="rotate(-55 630 500)"><rect x="598.0" y="382.0" width="64" height="150" rx="32.0" fill="#FFE600" stroke="#0D0D0D" stroke-width="16"/></g>
+  <path d="M 372 270 Q 402 288 432 270" fill="none" stroke="#0D0D0D" stroke-width="12" stroke-linecap="round"/>
+  <path d="M 528 270 Q 558 288 588 270" fill="none" stroke="#0D0D0D" stroke-width="12" stroke-linecap="round"/>
+  <rect x="374.0" y="203" width="56" height="18" rx="9" fill="#0D0D0D" transform="rotate(-10 402 212)"/>
+  <rect x="530.0" y="203" width="56" height="18" rx="9" fill="#0D0D0D" transform="rotate(10 558 212)"/>
+  <path d="M 415.0 380 Q 480 414 545.0 380" fill="none" stroke="#0D0D0D" stroke-width="14" stroke-linecap="round"/>
+  <path d="M 220 120 l 14 34 l 36 4 l -28 24 l 8 36 l -30 -20 l -30 20 l 8 -36 l -28 -24 l 36 -4 Z" fill="#16DB65" stroke="#0D0D0D" stroke-width="10" stroke-linejoin="round"/>
+</svg>

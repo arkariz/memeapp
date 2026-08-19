@@ -1,0 +1,11 @@
+<svg width="960" height="640" viewBox="0 0 960 640" xmlns="http://www.w3.org/2000/svg">
+  <rect x="280.0" y="150.0" width="400" height="380" rx="130" ry="130" fill="#FFE600" stroke="#0D0D0D" stroke-width="24" stroke-linejoin="round"/>
+  <g transform="rotate(20 285 410)"><rect x="253.0" y="292.0" width="64" height="150" rx="32.0" fill="#FFE600" stroke="#0D0D0D" stroke-width="16"/></g>
+  <g transform="rotate(-140 630 350)"><rect x="598.0" y="192.0" width="64" height="190" rx="32.0" fill="#FFE600" stroke="#0D0D0D" stroke-width="16"/></g>
+  <circle cx="630" cy="284" r="42" fill="#FFE600" stroke="#0D0D0D" stroke-width="16"/>
+  <circle cx="402" cy="270" r="34" fill="#FFFFFF" stroke="#0D0D0D" stroke-width="10"/><circle cx="402" cy="262" r="15" fill="#0D0D0D"/>
+  <circle cx="558" cy="270" r="34" fill="#FFFFFF" stroke="#0D0D0D" stroke-width="10"/><circle cx="558" cy="262" r="15" fill="#0D0D0D"/>
+  <rect x="372.0" y="209" width="60" height="18" rx="9" fill="#0D0D0D" transform="rotate(-4 402 218)"/>
+  <rect x="526.0" y="193" width="64" height="18" rx="9" fill="#0D0D0D" transform="rotate(-28 558 202)"/>
+  <path d="M 458.0 380 Q 480 386 502.0 380" fill="none" stroke="#0D0D0D" stroke-width="12" stroke-linecap="round"/>
+</svg>
