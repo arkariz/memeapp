@@ -203,7 +203,7 @@ Sizes: **S** ≤ 1 day · **M** 2–4 days · **L** ~1 week. Solo-dev estimates.
 |---|---|---|---|---|
 | T-001 | Real-device latency validation: run spike on a physical mid-tier phone, record p50/p90, formal go/no-go | S | — | Risk 3 |
 | T-002 | Confirm stack decision (default: Flutter host + Kotlin core) after T-001 | S | T-001 | OQ |
-| T-003 | Draft Play Console Usage Access declaration; create internal testing track | S | — | Timeline |
+| T-003 | ~~Draft Play Console Usage Access declaration~~ — **done**, see [play-console-usage-access-declaration.md](play-console-usage-access-declaration.md); creating the internal testing track itself still pending (Play Console account action) | S | — | Timeline |
 | T-004 | ~~Write roast template pack v1~~ — **done**, see §7 and `assets/roast_pack_v1/` | M | — | P0-3, OQ |
 | T-005 | ~~Original meme asset set v1~~ — **brief done**, see [meme asset brief](memeapp-meme-asset-brief.md); production (illustration commission or in-house) still pending | M | — | OQ design |
 
