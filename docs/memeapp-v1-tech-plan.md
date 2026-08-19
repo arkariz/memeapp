@@ -105,20 +105,60 @@ Core events: `onboarding_step(step, ok)` · `grant(pkg, min, has_intent)` · `ro
 
 **Tripwire job (P0-6):** weekly computation of first-roast stop rate per install-week cohort. If a cohort decays >30% relative to its own week 1 → flagged in the dashboard (copy-refresh experiment is the response lever; friction-gradient promotion is the pre-agreed pivot). Ships in Phase 2, before public launch — the day-14 checkpoint depends on it.
 
-## 7. Testing Strategy
+## 7. Content Pipeline (templates, memes, GIFs)
+
+**Principle: config-shaped from day one, with the config bundled.** v1 ships no remote infrastructure, but even the bundled content is a versioned pack read through the same loader a remote pack will use later — so adding remote costs ~2–3 days, not a refactor.
+
+**Pack format** — one versioned JSON + asset files:
+
+```json
+{
+  "version": 3,
+  "templates": [{
+    "id": "t_042", "tier": 2, "requires": ["intent_text"],
+    "line1": "\"{intent}\"",
+    "line2": "THAT WAS {actual_min} MINUTES AGO.",
+    "degrade": ["{intent}", "{actual_min} min. Sure."],
+    "asset": "monkey_side_eye", "tone": ["default", "brutal"]
+  }],
+  "assets": { "monkey_side_eye": { "type": "webp", "file": "monkey.webp", "sha256": "…" } }
+}
+```
+
+In code: slot grammar, tier semantics, schema versioning. In data: every string, every asset, tone tags, selection weights, the iOS two-line degradations.
+
+**Resolution order** (the entire mechanism):
+
+```
+filesDir/packs/<latest valid>/   ← downloaded pack, if any
+        ↓ fallback
+APK assets/roast_pack_v1/        ← bundled pack, always present
+```
+
+RoastEngine loads whichever validates (schema version + asset sha256). A bad download falls back to bundled — the app can never be roast-less.
+
+**Remote side — no backend, no Firebase.** A static manifest (`{ "latest": 4, "url": "…/pack_v4.zip", "sha256": "…" }`) on any static host (GitHub Releases / Cloudflare R2). Daily WorkManager job: check → download when newer → verify hash → atomic pointer swap. Firebase Remote Config adds SDK weight to do what a static file does; skip it.
+
+**Images & GIFs:** prefer animated WebP (smaller, better quality); GIF decodes through the same `ImageDecoder`/`AnimatedImageDrawable` path on minSdk 29, so both work. Flutter renders the same files on the cards side. Validator caps: ~2 MB per asset, ~15 MB per pack.
+
+**Pack GC rule:** `roast_payload` resolves asset paths at grant time, so a mid-session pack swap must not delete files a live payload references — old pack directories are deleted on service start only, never on swap. Display must never be able to fail.
+
+**Why this is product-critical, not hygiene:** the habituation tripwire's first response lever is a copy refresh without an app release (a pack push), and the meme-licensing plan is "ship placeholders in beta, push the commissioned originals (T-005) as a pack." Both depend on this pipeline existing before the day-14 checkpoint — hence T-207 sits in Phase 2, not Phase 3.
+
+## 8. Testing Strategy
 
 - **Unit (Kotlin):** RoastEngine (tier selection, slot filling, no-repeat), SessionStateMachine (every transition + grace window), streak day-boundary logic
 - **Instrumented:** overlay latency harness — the spike, promoted to a repeatable test rig; grant-reload-after-process-death
 - **Manual OEM protocol:** Pixel / Samsung / Xiaomi matrix — overnight service survival, post-reboot recovery, battery-saver-on behavior; results logged per device in the repo
 - **Beta:** closed track, all telemetry live, one week minimum before staged rollout
 
-## 8. Revisit as It Grows
+## 9. Revisit as It Grows
 
-iOS port (two-line template degradations already mandatory per PRD) · server-side LLM roasts prefetched into `roast_payload` (schema already fits) · social layer (first thing that needs a backend — nothing in v1 does) · remote copy packs move template JSON from assets to fetched cache (Phase 3, schema unchanged).
+iOS port (two-line template degradations already mandatory per PRD) · server-side LLM roasts prefetched into `roast_payload` (schema already fits) · social layer (first thing that needs a backend — nothing in v1 does).
 
 ---
 
-## 9. Task Backlog
+## 10. Task Backlog
 
 Sizes: **S** ≤ 1 day · **M** 2–4 days · **L** ~1 week. Solo-dev estimates. Phase 1 ≈ 5–7 weeks.
 
@@ -159,12 +199,12 @@ Sizes: **S** ≤ 1 day · **M** 2–4 days · **L** ~1 week. Solo-dev estimates.
 | T-204 | Cohort dashboard + weekly tripwire computation (first-roast stop rate) | M | T-203 | P0-6 |
 | T-205 | Onboarding per-step funnel instrumentation | S | T-203, T-109 | Metrics |
 | T-206 | Staged rollout config + **calendar the day-14 checkpoint as a decision meeting** | S | T-204 | Risk 1 |
+| T-207 | Remote copy packs: static manifest + WorkManager fetch, hash verify, atomic swap, GC rule (see §7) — **must exist before the day-14 checkpoint** | M | T-105 | P1 |
 
 ### Phase 3 — Data-driven (sequenced by day-14 checkpoint data)
 
 | ID | Task | Size | Depends | PRD |
 |---|---|---|---|---|
-| T-301 | Remote copy packs: remote config JSON + asset cache (first lever if tripwire fires) | M | T-105 | P1 |
 | T-302 | OEM reliability playbook: in-app vendor-specific guidance, driven by watch_down telemetry | M | T-110 | P1 |
 | T-303 | Weekly report-card meme | M | T-202 | P1 |
 | T-304 | Tone dial (gentle ↔ brutal) | S | T-105 | P1 |
