@@ -1,4 +1,4 @@
-# memeapp v1 — Meme Asset Production Brief (T-005)
+# Grudge v1 — Meme Asset Production Brief (T-005)
 
 **Status:** Draft v1 · **Date:** 2026-08-19
 **Companions:** [PRD](memeapp-v1-prd.md) · [Tech plan §7](memeapp-v1-tech-plan.md#7-content-pipeline-templates-memes-gifs) · [Roast pack](../assets/roast_pack_v1/roast_pack.json) · [Tone guide](../assets/roast_pack_v1/TONE_GUIDE.md) · [Figma](https://www.figma.com/design/oYbpumicFw6I9f94SlqKiS)

@@ -13,7 +13,7 @@
 
 *(This is the top-level "what does your app do" field — keep it factual and centered on the permission's use, not marketing copy.)*
 
-> memeapp is a personal screen-time limiter. Users choose which apps to watch and set a daily time budget for each. The app uses Usage Access solely to detect when a watched app is opened and to measure how long the user has been in it, so the app can show an on-device reminder when the user's own limit is reached. All usage data stays on the device — it is never uploaded, sold, or shared with third parties, and no account is required to use the app.
+> Grudge is a personal screen-time limiter. Users choose which apps to watch and set a daily time budget for each. The app uses Usage Access solely to detect when a watched app is opened and to measure how long the user has been in it, so the app can show an on-device reminder when the user's own limit is reached. All usage data stays on the device — it is never uploaded, sold, or shared with third parties, and no account is required to use the app.
 
 ## Justification for `PACKAGE_USAGE_STATS`
 

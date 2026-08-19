@@ -1,4 +1,4 @@
-# memeapp v1 — Technical Plan & Task Backlog
+# Grudge v1 — Technical Plan & Task Backlog
 
 **Status:** Draft v1 · **Date:** 2026-08-19 · **Platform:** Android 10+ (minSdk 29)
 **Companions:** [PRD](memeapp-v1-prd.md) · [Latency spike](../spike/README.md) · [Figma designs](https://www.figma.com/design/oYbpumicFw6I9f94SlqKiS)
@@ -211,7 +211,7 @@ Sizes: **S** ≤ 1 day · **M** 2–4 days · **L** ~1 week. Solo-dev estimates.
 
 | ID | Task | Size | Depends | PRD |
 |---|---|---|---|---|
-| T-101 | Repo scaffold: Flutter app + Kotlin core module + Pigeon contracts + CI debug build | M | T-002 | — |
+| T-101 | ~~Repo scaffold: Flutter app + Kotlin core module + Pigeon contracts + CI debug build~~ — **done**, started ahead of T-002's formal sign-off per explicit direction; app/ builds clean (`flutter analyze` 0 issues, test passes, debug APK builds) | M | T-002 | — |
 | T-102 | Port spike → WatcherService with SessionStateMachine; heartbeat writer | M | T-101 | P0-2 |
 | T-103 | Room schema + DAOs + grant-reload-on-restart | M | T-101 | P0-2 |
 | T-104 | Intent-capture overlay (native): chips, focusable text input, ≤2-tap grant, latency telemetry | L | T-102 | P0-2 |

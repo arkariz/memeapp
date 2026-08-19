@@ -1,4 +1,4 @@
-# memeapp v1 — Product Requirements
+# Grudge v1 — Product Requirements
 
 **Status:** Draft v2 · **Date:** 2026-08-19 · **Platform:** Android-first
 **One-liner:** A usage limiter that captures your intention when you open a distracting app, then roasts you with your own words when you blow past it — and hands you a shareable card when you don't.
@@ -11,13 +11,13 @@ Self-aware doom-scrollers open apps intending "just 5 minutes" and surface 40 mi
 
 **Target user:** self-aware doom-scrollers who install semi-ironically. They opt into being roasted (tone risk is low) but are novelty tourists (retention risk is high). Explicitly *not* for compulsive-use clinical cases or parental control.
 
-**Why Android first:** Android lets memeapp draw its own full-screen overlay at the block moment — the roast can be the actual meme, visually, exactly where the original brief wanted it ("noticeable, unexpected"). iOS restricts that moment to two lines of text on Apple's shield template and gates distribution behind an entitlement approval. Android gives the core moment its full expression and removes the external gatekeeper from the launch path.
+**Why Android first:** Android lets Grudge draw its own full-screen overlay at the block moment — the roast can be the actual meme, visually, exactly where the original brief wanted it ("noticeable, unexpected"). iOS restricts that moment to two lines of text on Apple's shield template and gates distribution behind an entitlement approval. Android gives the core moment its full expression and removes the external gatekeeper from the launch path.
 
 ## Core Loop
 
 The overlay is the doorway, not just the wall:
 
-1. **Intent capture at open** — memeapp's monitoring service detects a watched app coming to the foreground and covers it with a full-screen overlay: "How long this time?" (duration pick + optional free-text intention, e.g. *"just checking one thing"*). The overlay stands down for exactly the granted time.
+1. **Intent capture at open** — Grudge's monitoring service detects a watched app coming to the foreground and covers it with a full-screen overlay: "How long this time?" (duration pick + optional free-text intention, e.g. *"just checking one thing"*). The overlay stands down for exactly the granted time.
 2. **Callback roast at expiry** — the overlay returns as a full-screen, meme-formatted roast quoting the user's own words: *"'Just checking one thing.' That was 47 minutes ago."* Copy and layout are precomputed at grant time, so the roast renders instantly and offline.
 3. **Negotiation, not prohibition** — more time is always available, at escalating friction (tap → type a phrase → wait timer). Every extension is logged.
 4. **Streaks & success cards** — beating your own estimate feeds a streak; streak milestones and beaten estimates generate meme-formatted share cards. **Designed share moments attach to success, not failure** — the roast overlay has no share affordance, ever. It will get screenshotted organically; it is never optimized for sharing.
@@ -46,14 +46,14 @@ Goal 1 is primary. When a design decision trades behavior change against shareab
 
 Ordered by priority. Persona: the doom-scroller.
 
-1. As a doom-scroller, I want to pick which apps memeapp watches and set a daily budget, so the app knows what "too much" means for me.
+1. As a doom-scroller, I want to pick which apps Grudge watches and set a daily budget, so the app knows what "too much" means for me.
 2. As a doom-scroller opening TikTok, I want to declare how long I'm going in for, so my future self has something to hold me to.
 3. As a doom-scroller who hit my declared limit, I want the block screen to quote my own intention back at me, so stopping feels like a punchline instead of a punishment.
 4. As a doom-scroller who genuinely needs more time, I want to extend without drama, so the app never forces a choice between it and my real life — even if it gets progressively cheekier about granting it.
 5. As a doom-scroller who beat my estimate, I want a shareable card, so my restraint gets an audience.
 6. As a doom-scroller on a streak, I want to see the streak and what breaks it, so I have a reason to come back tomorrow.
 7. *(Edge)* As a user who skips the free-text intention, I still get duration-based roast copy — the loop never depends on optional input.
-8. *(Error)* As a user whose phone killed memeapp's monitoring in the background, I'm told the watch is down and how to fix it — the app never silently pretends to work.
+8. *(Error)* As a user whose phone killed Grudge's monitoring in the background, I'm told the watch is down and how to fix it — the app never silently pretends to work.
 
 ## Requirements
 

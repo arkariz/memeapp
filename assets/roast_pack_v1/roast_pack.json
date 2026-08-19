@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "schema": "memeapp.roast_pack.v1",
+  "schema": "grudge.roast_pack.v1",
   "generated": "2026-08-19",
   "notes": "v1 bundled pack. The 8 illustrated assets (T-005, see docs/memeapp-meme-asset-brief.md) are now the OFFLINE FALLBACK layer, not the primary experience — primary is a live Tenor GIF fetched at grant time using the 'moods' map below (see tech plan §7c). Every template's 'asset' id doubles as a mood id, so no per-template changes were needed to add live GIFs. No third-party or copyrighted image files ship in the APK; live GIFs are fetched at runtime through Tenor's licensed API, never bundled or redistributed.",
   "templates": [
