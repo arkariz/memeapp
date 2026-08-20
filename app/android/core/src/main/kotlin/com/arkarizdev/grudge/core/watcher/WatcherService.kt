@@ -12,9 +12,11 @@ import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
 import com.arkarizdev.grudge.core.data.GrudgeDatabase
+import com.arkarizdev.grudge.core.data.RoastPayloadEntity
 import com.arkarizdev.grudge.core.data.SessionDao
 import com.arkarizdev.grudge.core.data.SessionEntity
 import com.arkarizdev.grudge.core.data.WatchedAppEntity
+import com.arkarizdev.grudge.core.roast.RoastEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -64,6 +66,7 @@ class WatcherService : Service() {
     private lateinit var db: GrudgeDatabase
     private lateinit var heartbeat: HeartbeatStore
     private lateinit var intentOverlay: IntentOverlayController
+    private lateinit var roastEngine: RoastEngine
     private val sessionStateMachine = SessionStateMachine()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var lastQueryTs = 0L
@@ -79,6 +82,7 @@ class WatcherService : Service() {
         db = GrudgeDatabase.get(this)
         heartbeat = HeartbeatStore(db.heartbeatDao())
         intentOverlay = IntentOverlayController(this)
+        roastEngine = RoastEngine(this)
 
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
@@ -139,6 +143,7 @@ class WatcherService : Service() {
                 Log.i(TAG, "debugGrant pkg=$pkg minutes=$minutes ok=$ok")
                 if (ok) {
                     persistActiveSessions()
+                    precomputeRoast(pkg, intentText, grantedMin = minutes, extensionsSoFar = 0)
                     Log.i(TAG, "debugGrant persisted pkg=$pkg")
                 }
             } catch (t: Throwable) {
@@ -208,12 +213,54 @@ class WatcherService : Service() {
                 serviceScope.launch {
                     try {
                         persistActiveSessions()
+                        precomputeRoast(pkg, intentText, grantedMin = minutes, extensionsSoFar = 0)
                     } catch (t: Throwable) {
-                        Log.e(TAG, "persist after grant failed", t)
+                        Log.e(TAG, "persist/precompute after grant failed", t)
                     }
                 }
             }
         }
+    }
+
+    /**
+     * T-105: fills roast_payload for the roast this session will show IF
+     * it expires naturally — precomputed now, read (never computed) at
+     * display time. elapsedMin is set to grantedMin here (the projection
+     * "you'll have used about what you asked for"), which the tech plan
+     * accepts as accurate enough for the common case; see RoastEngine's
+     * own doc comment for the full reasoning. Session Room row must exist
+     * first (persistActiveSessions() just ran) — a roast with no session
+     * to attach to isn't meaningful, so this silently no-ops if not found
+     * rather than inventing a placeholder sessionId.
+     */
+    private suspend fun precomputeRoast(pkg: String, intentText: String?, grantedMin: Int, extensionsSoFar: Int) {
+        val sessionRow = db.sessionDao().findActive(pkg) ?: run {
+            Log.w(TAG, "precomputeRoast: no session row for pkg=$pkg, skipping")
+            return
+        }
+        val result = roastEngine.precompute(
+            pkg = pkg,
+            intentText = intentText,
+            grantedMin = grantedMin,
+            elapsedMin = grantedMin,
+            extensionsSoFar = extensionsSoFar,
+        ) ?: run {
+            Log.w(TAG, "precomputeRoast: no template matched for pkg=$pkg")
+            return
+        }
+        db.roastPayloadDao().insert(
+            RoastPayloadEntity(
+                sessionId = sessionRow.id,
+                tier = result.tier,
+                line1 = result.line1,
+                line2 = result.line2,
+                assetRef = result.asset,
+                createdAt = System.currentTimeMillis(),
+                gifSource = "BUNDLED", // T-208/T-209 wire the live Tenor path; bundled is always correct as-of T-105
+                gifLocalPath = null,
+            )
+        )
+        Log.i(TAG, "precomputeRoast pkg=$pkg templateId=${result.templateId} tier=${result.tier}")
     }
 
     /**
