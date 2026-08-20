@@ -29,11 +29,20 @@ class WatcherStatusDto {
 }
 
 /// Dart -> Kotlin: queries/commands the app module implements against
-/// WatcherCore. startWatcher is a dev/test affordance for T-102 — the real
-/// product starts the service from onboarding completion (T-109), not a
-/// manual button.
+/// WatcherCore. startWatcher/debugGrant are dev/test affordances (T-102/
+/// T-103) — the real product starts the service from onboarding (T-109)
+/// and grants come from the intent-capture overlay (T-104), not a button.
 @HostApi()
 abstract class WatcherHostApi {
+  /// @async because it now does real Room I/O (T-103) — Room forbids
+  /// main-thread queries, and Pigeon host calls land on the main thread
+  /// unless the method is marked async.
+  @async
   WatcherStatusDto getStatus();
+
   void startWatcher();
+
+  /// Dev/test-only: manually trigger a grant to verify "grant-reload-on-
+  /// restart" without T-104's intent overlay existing yet.
+  void debugGrant(String pkg, int minutes, String? intentText);
 }

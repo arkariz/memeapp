@@ -50,10 +50,15 @@ class _ScaffoldCheckPageState extends State<ScaffoldCheckPage> {
     await _queryStatus();
   }
 
+  Future<void> _debugGrant() async {
+    await _api.debugGrant('com.android.chrome', 5, 'testing reload-on-restart');
+    await _queryStatus();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Grudge — T-102 scaffold check')),
+      appBar: AppBar(title: const Text('Grudge — T-103 scaffold check')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -70,6 +75,15 @@ class _ScaffoldCheckPageState extends State<ScaffoldCheckPage> {
               child: const Text(
                 'Start watcher (dev/test only — real product\n'
                 'starts this from onboarding, T-109)',
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: _debugGrant,
+              child: const Text(
+                'Debug grant: chrome, 5 min (dev/test only —\n'
+                'real product grants from the intent overlay, T-104)',
                 textAlign: TextAlign.center,
               ),
             ),

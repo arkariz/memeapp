@@ -272,17 +272,28 @@ private open class WatcherApiPigeonCodec : StandardMessageCodec() {
   }
 }
 
+
 /**
  * Dart -> Kotlin: queries/commands the app module implements against
- * WatcherCore. startWatcher is a dev/test affordance for T-102 — the real
- * product starts the service from onboarding completion (T-109), not a
- * manual button.
+ * WatcherCore. startWatcher/debugGrant are dev/test affordances (T-102/
+ * T-103) — the real product starts the service from onboarding (T-109)
+ * and grants come from the intent-capture overlay (T-104), not a button.
  *
  * Generated interface from Pigeon that represents a handler of messages from Flutter.
  */
 interface WatcherHostApi {
-  fun getStatus(): WatcherStatusDto
+  /**
+   * @async because it now does real Room I/O (T-103) — Room forbids
+   * main-thread queries, and Pigeon host calls land on the main thread
+   * unless the method is marked async.
+   */
+  fun getStatus(callback: (Result<WatcherStatusDto>) -> Unit)
   fun startWatcher()
+  /**
+   * Dev/test-only: manually trigger a grant to verify "grant-reload-on-
+   * restart" without T-104's intent overlay existing yet.
+   */
+  fun debugGrant(pkg: String, minutes: Long, intentText: String?)
 
   companion object {
     /** The codec used by WatcherHostApi. */
@@ -297,12 +308,15 @@ interface WatcherHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.getStatus$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            val wrapped: List<Any?> = try {
-              listOf(api.getStatus())
-            } catch (exception: Throwable) {
-              WatcherApiPigeonUtils.wrapError(exception)
+            api.getStatus{ result: Result<WatcherStatusDto> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(WatcherApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(WatcherApiPigeonUtils.wrapResult(data))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -314,6 +328,26 @@ interface WatcherHostApi {
           channel.setMessageHandler { _, reply ->
             val wrapped: List<Any?> = try {
               api.startWatcher()
+              listOf(null)
+            } catch (exception: Throwable) {
+              WatcherApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.debugGrant$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val pkgArg = args[0] as String
+            val minutesArg = args[1] as Long
+            val intentTextArg = args[2] as String?
+            val wrapped: List<Any?> = try {
+              api.debugGrant(pkgArg, minutesArg, intentTextArg)
               listOf(null)
             } catch (exception: Throwable) {
               WatcherApiPigeonUtils.wrapError(exception)

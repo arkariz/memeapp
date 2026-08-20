@@ -5,11 +5,17 @@ import android.content.Context
 import android.content.Intent
 import android.os.Process
 import android.provider.Settings
+import com.arkarizdev.grudge.core.data.GrudgeDatabase
 
 /**
  * Entry point the app module's Pigeon handler delegates to. Kept as a plain
  * object with no Flutter/Pigeon imports so the core module never depends on
  * the Flutter engine (tech plan §2 — core must run with the engine dead).
+ *
+ * status() is suspend: it now reads Room (heartbeat + active session
+ * count), and Room forbids main-thread queries by design. The Pigeon
+ * getStatus call is marked @async precisely so this can be a real suspend
+ * function instead of reaching for allowMainThreadQueries() as a shortcut.
  */
 object WatcherCore {
     /**
@@ -18,8 +24,9 @@ object WatcherCore {
      */
     private const val STALE_HEARTBEAT_MS = 5_000L
 
-    fun status(context: Context): WatcherStatus {
-        val heartbeat = HeartbeatStore(context)
+    suspend fun status(context: Context): WatcherStatus {
+        val db = GrudgeDatabase.get(context)
+        val heartbeat = HeartbeatStore(db.heartbeatDao())
         val lastTick = heartbeat.lastTickAt()
         val heartbeatAgeMs = lastTick?.let { System.currentTimeMillis() - it }
         val isRunning = heartbeatAgeMs != null && heartbeatAgeMs < STALE_HEARTBEAT_MS
@@ -28,10 +35,9 @@ object WatcherCore {
             heartbeatAgeMs = heartbeatAgeMs,
             hasUsageAccess = hasUsageAccess(context),
             hasOverlayPermission = Settings.canDrawOverlays(context),
-            // TODO(T-101 follow-up): read this straight from the running
-            // service once there's a real cross-process channel; for now
-            // this is only accurate when called from the same process.
-            activeSessionCount = 0,
+            // Real now (T-103): reads the same Room DB the running service
+            // writes to, so this works cross-process, not just same-process.
+            activeSessionCount = db.sessionDao().activeCount(),
         )
     }
 

@@ -25,8 +25,27 @@ class SessionStateMachine {
     /** Read-only snapshot for status reporting / tests. */
     fun snapshot(pkg: String): Session? = sessions[pkg]?.copy()
 
+    /** Read-only snapshot of every non-IDLE session — what T-103 persists each tick. */
+    fun allActiveSessions(): List<Session> =
+        sessions.values.filter { it.state != SessionState.IDLE }.map { it.copy() }
+
     fun activeSessionCount(): Int =
         sessions.values.count { it.state != SessionState.IDLE }
+
+    /**
+     * Seeds the machine from persisted state at service startup (T-103's
+     * "grant-reload-on-restart"). Only RUNNING is restorable — a session
+     * only gets a Room row once it has a real grant (see grant() below),
+     * so anything reloaded here always has grantedMin/expiryAt set. If
+     * expiry already passed while the service was dead, the very next
+     * tick() naturally re-derives ROASTING — no special-casing needed.
+     */
+    fun restore(persisted: List<Session>) {
+        for (session in persisted) {
+            sessions[session.pkg] = session.copy(state = SessionState.RUNNING)
+            Log.i(TAG, "pkg=${session.pkg} restored RUNNING expiryAt=${session.expiryAt}")
+        }
+    }
 
     /** Called when [pkg] (a watched package) comes to the foreground. */
     fun onAppForegrounded(pkg: String, now: Long) {

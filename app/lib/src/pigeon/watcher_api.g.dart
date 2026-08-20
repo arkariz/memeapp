@@ -193,9 +193,9 @@ class _PigeonCodec extends StandardMessageCodec {
 }
 
 /// Dart -> Kotlin: queries/commands the app module implements against
-/// WatcherCore. startWatcher is a dev/test affordance for T-102 — the real
-/// product starts the service from onboarding completion (T-109), not a
-/// manual button.
+/// WatcherCore. startWatcher/debugGrant are dev/test affordances (T-102/
+/// T-103) — the real product starts the service from onboarding (T-109)
+/// and grants come from the intent-capture overlay (T-104), not a button.
 class WatcherHostApi {
   /// Constructor for [WatcherHostApi]. The [binaryMessenger] named argument is
   /// available for dependency injection. If it is left null, the default
@@ -209,6 +209,9 @@ class WatcherHostApi {
 
   final String pigeonVar_messageChannelSuffix;
 
+  /// @async because it now does real Room I/O (T-103) — Room forbids
+  /// main-thread queries, and Pigeon host calls land on the main thread
+  /// unless the method is marked async.
   Future<WatcherStatusDto> getStatus() async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.getStatus$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
@@ -236,6 +239,26 @@ class WatcherHostApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  /// Dev/test-only: manually trigger a grant to verify "grant-reload-on-
+  /// restart" without T-104's intent overlay existing yet.
+  Future<void> debugGrant(String pkg, int minutes, String? intentText) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.debugGrant$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[pkg, minutes, intentText]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(

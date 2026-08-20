@@ -1,40 +1,24 @@
 package com.arkarizdev.grudge.core.watcher
 
-import android.content.Context
+import com.arkarizdev.grudge.core.data.HeartbeatDao
+import com.arkarizdev.grudge.core.data.HeartbeatEntity
 
 /**
  * Durable heartbeat (last_tick_at / service_started_at) so watch-down
  * detection (T-110) can tell "the service died" apart from "the app was
- * just closed." SharedPreferences is an interim store — the tech plan's
- * data model puts this in Room (§4), but T-103 hasn't landed yet and
- * heartbeat is this task's own deliverable, so it gets a minimal durable
- * store now rather than waiting on Room. Swapping this for a Room-backed
- * implementation later is a one-file change; callers only see this
- * interface's shape.
+ * just closed." Now backed by the real `heartbeat` table from T-103's
+ * Room schema — this was explicitly an interim SharedPreferences store in
+ * T-102, swappable without changing callers; this is that swap.
  */
-class HeartbeatStore(context: Context) {
-    private val prefs = context.applicationContext
-        .getSharedPreferences("grudge_heartbeat", Context.MODE_PRIVATE)
+class HeartbeatStore(private val dao: HeartbeatDao) {
+    private var serviceStartedAt: Long? = null
 
-    fun recordTick(now: Long) {
-        if (!prefs.contains(KEY_SERVICE_STARTED_AT)) {
-            prefs.edit().putLong(KEY_SERVICE_STARTED_AT, now).apply()
-        }
-        prefs.edit().putLong(KEY_LAST_TICK_AT, now).apply()
+    suspend fun recordTick(now: Long) {
+        val startedAt = serviceStartedAt ?: now.also { serviceStartedAt = it }
+        dao.upsert(HeartbeatEntity(lastTickAt = now, serviceStartedAt = startedAt))
     }
 
-    fun recordServiceStopped() {
-        prefs.edit().remove(KEY_SERVICE_STARTED_AT).apply()
-    }
+    suspend fun lastTickAt(): Long? = dao.get()?.lastTickAt
 
-    fun lastTickAt(): Long? =
-        prefs.getLong(KEY_LAST_TICK_AT, -1L).takeIf { it >= 0L }
-
-    fun serviceStartedAt(): Long? =
-        prefs.getLong(KEY_SERVICE_STARTED_AT, -1L).takeIf { it >= 0L }
-
-    companion object {
-        private const val KEY_LAST_TICK_AT = "last_tick_at"
-        private const val KEY_SERVICE_STARTED_AT = "service_started_at"
-    }
+    suspend fun serviceStartedAt(): Long? = dao.get()?.serviceStartedAt
 }

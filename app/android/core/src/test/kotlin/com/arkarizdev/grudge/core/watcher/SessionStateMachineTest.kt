@@ -137,4 +137,54 @@ class SessionStateMachineTest {
         // `other` stays INTENT_PENDING (never granted).
         assertEquals(2, sm.activeSessionCount())
     }
+
+    @Test
+    fun `allActiveSessions excludes IDLE and returns copies`() {
+        val sm = SessionStateMachine()
+        sm.onAppForegrounded(pkg, t0)
+        sm.grant(pkg, minutes = 5, intentText = "test", now = t0)
+
+        val active = sm.allActiveSessions()
+        assertEquals(1, active.size)
+        assertEquals(pkg, active[0].pkg)
+
+        // Mutating the returned copy must not affect internal state.
+        active[0].extensions = 99
+        assertEquals(0, sm.snapshot(pkg)?.extensions)
+    }
+
+    @Test
+    fun `restore seeds a session as RUNNING from a persisted grant`() {
+        val sm = SessionStateMachine()
+        val persisted = Session(
+            pkg = pkg,
+            state = SessionState.IDLE, // irrelevant — restore() forces RUNNING
+            intentText = "just checking one thing",
+            grantedMin = 10,
+            expiryAt = t0 + 10 * 60_000L,
+            extensions = 1,
+        )
+
+        sm.restore(listOf(persisted))
+
+        val session = sm.snapshot(pkg)!!
+        assertEquals(SessionState.RUNNING, session.state)
+        assertEquals(10, session.grantedMin)
+        assertEquals("just checking one thing", session.intentText)
+        assertEquals(1, session.extensions)
+    }
+
+    @Test
+    fun `restored session naturally becomes ROASTING on the first tick if expiry already passed`() {
+        val sm = SessionStateMachine()
+        val expiredWhileDead = Session(
+            pkg = pkg,
+            grantedMin = 5,
+            expiryAt = t0 - 1_000, // expiry was in the past when the service restarted
+        )
+        sm.restore(listOf(expiredWhileDead))
+
+        sm.tick(t0) // the first poll after restart
+        assertEquals(SessionState.ROASTING, sm.snapshot(pkg)?.state)
+    }
 }
