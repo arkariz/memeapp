@@ -76,7 +76,7 @@ class IntentOverlayController(private val context: Context) {
     }
 
     private fun showOnMainThread(pkg: String, eventTs: Long, onGrant: (minutes: Int, intentText: String?) -> Unit) {
-        dismissViewOnMainThread()
+        removeCurrentViewOnMainThread() // NOT dismissViewOnMainThread() — see its doc comment; this was T-106's live-caught flicker bug, fixed here too for the same reason
 
         var selectedMinutes = DEFAULT_MINUTES
         val chipViews = mutableMapOf<Int, Button>()
@@ -164,7 +164,10 @@ class IntentOverlayController(private val context: Context) {
 
         windowManager.addView(root, lp)
         overlayView = root
-        shownForPkg = pkg
+        // shownForPkg was already set synchronously in show() and is no
+        // longer touched by removeCurrentViewOnMainThread() above — no
+        // need to re-assert it here (it previously masked the same bug
+        // T-106 hit; see removeCurrentViewOnMainThread's doc comment).
 
         var logged = false
         root.viewTreeObserver.addOnPreDrawListener {
@@ -184,10 +187,25 @@ class IntentOverlayController(private val context: Context) {
     fun dismissIfShowing(pkg: String) {
         if (shownForPkg != pkg) return
         shownForPkg = null
-        mainHandler.post { dismissViewOnMainThread() }
+        mainHandler.post { removeCurrentViewOnMainThread() }
     }
 
+    /** Full dismiss: removes the view AND clears shownForPkg. Used by the START button. */
     private fun dismissViewOnMainThread() {
+        removeCurrentViewOnMainThread()
+        shownForPkg = null
+    }
+
+    /**
+     * View-only removal, no shownForPkg side effect — what showOnMainThread
+     * must call before rebuilding. Using the full dismiss there was T-106's
+     * live-caught flicker bug: it cleared shownForPkg moments after show()
+     * had just set it, so the very next poll tick saw "not showing" and
+     * rebuilt again, forever. Same fix applied here for the same reason,
+     * even though this controller happened to mask it via a redundant
+     * re-assignment that's now removed.
+     */
+    private fun removeCurrentViewOnMainThread() {
         overlayView?.let {
             try {
                 windowManager.removeView(it)
@@ -195,7 +213,6 @@ class IntentOverlayController(private val context: Context) {
             }
         }
         overlayView = null
-        shownForPkg = null
     }
 
     private fun chipBackground(selected: Boolean) = android.graphics.drawable.GradientDrawable().apply {

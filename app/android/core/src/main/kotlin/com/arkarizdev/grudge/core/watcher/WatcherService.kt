@@ -66,6 +66,7 @@ class WatcherService : Service() {
     private lateinit var db: GrudgeDatabase
     private lateinit var heartbeat: HeartbeatStore
     private lateinit var intentOverlay: IntentOverlayController
+    private lateinit var roastOverlay: RoastOverlayController
     private lateinit var roastEngine: RoastEngine
     private val sessionStateMachine = SessionStateMachine()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -82,6 +83,7 @@ class WatcherService : Service() {
         db = GrudgeDatabase.get(this)
         heartbeat = HeartbeatStore(db.heartbeatDao())
         intentOverlay = IntentOverlayController(this)
+        roastOverlay = RoastOverlayController(this)
         roastEngine = RoastEngine(this)
 
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -181,6 +183,7 @@ class WatcherService : Service() {
             if (previousForeground != null && previousForeground != e.packageName) {
                 sessionStateMachine.onAppLeft(previousForeground, now)
                 intentOverlay.dismissIfShowing(previousForeground)
+                roastOverlay.dismissIfShowing(previousForeground)
             }
             if (e.packageName in watchedPkgs) {
                 sessionStateMachine.onAppForegrounded(e.packageName, now)
@@ -190,6 +193,71 @@ class WatcherService : Service() {
 
         sessionStateMachine.tick(now)
         persistActiveSessions()
+        maybeShowRoastOverlay(now)
+    }
+
+    /**
+     * Checked after every tick(), not event-driven like the intent overlay
+     * — RUNNING -> ROASTING is a time-driven transition, not tied to a
+     * UsageEvent. show() itself no-ops if already showing for a pkg, so
+     * this is safe to call every poll tick without extra bookkeeping here.
+     */
+    private suspend fun maybeShowRoastOverlay(now: Long) {
+        val roasting = sessionStateMachine.allActiveSessions().filter { it.state == SessionState.ROASTING }
+        for (session in roasting) {
+            if (roastOverlay.isShowing(session.pkg)) continue
+            if (!Settings.canDrawOverlays(this)) {
+                Log.w(TAG, "pkg=${session.pkg} wants roast overlay but SYSTEM_ALERT_WINDOW not granted")
+                continue
+            }
+            val sessionRow = db.sessionDao().findActive(session.pkg) ?: continue
+            val payload = db.roastPayloadDao().latestFor(sessionRow.id)
+            if (payload == null) {
+                // No precomputed roast to show — most likely a session that
+                // predates RoastEngine (T-105) being wired in, restored from
+                // an old Room row. There's nothing to display, and leaving
+                // it in ROASTING forever means this branch re-runs every
+                // poll tick indefinitely (a real bug, caught live during
+                // T-106 testing — the fix is to resolve the session as if
+                // the user had tapped "done," not to keep retrying).
+                Log.w(TAG, "pkg=${session.pkg} is ROASTING with no roast_payload — resolving via markDone, nothing to show")
+                sessionStateMachine.markDone(session.pkg, now)
+                continue
+            }
+            roastOverlay.show(
+                pkg = session.pkg,
+                line1 = payload.line1,
+                line2 = payload.line2,
+                assetRef = payload.assetRef,
+                eventTs = now,
+                onDone = {
+                    sessionStateMachine.markDone(session.pkg, System.currentTimeMillis())
+                    Log.i(TAG, "markDone pkg=${session.pkg}")
+                    serviceScope.launch { persistActiveSessions() }
+                },
+                onExtend = { additionalMinutes ->
+                    val extendNow = System.currentTimeMillis()
+                    val ok = sessionStateMachine.extend(session.pkg, additionalMinutes, extendNow)
+                    Log.i(TAG, "extend pkg=${session.pkg} minutes=$additionalMinutes ok=$ok")
+                    if (ok) {
+                        serviceScope.launch {
+                            try {
+                                persistActiveSessions()
+                                val extendedSession = sessionStateMachine.snapshot(session.pkg)
+                                precomputeRoast(
+                                    pkg = session.pkg,
+                                    intentText = extendedSession?.intentText,
+                                    grantedMin = additionalMinutes,
+                                    extensionsSoFar = extendedSession?.extensions ?: 1,
+                                )
+                            } catch (t: Throwable) {
+                                Log.e(TAG, "persist/precompute after extend failed", t)
+                            }
+                        }
+                    }
+                },
+            )
+        }
     }
 
     /**

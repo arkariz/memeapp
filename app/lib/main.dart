@@ -51,7 +51,9 @@ class _ScaffoldCheckPageState extends State<ScaffoldCheckPage> {
   }
 
   Future<void> _debugGrant() async {
-    await _api.debugGrant('com.android.chrome', 5, 'testing reload-on-restart');
+    // 1 min, not 5 — a dev/test tool is more useful when it doesn't require
+    // waiting 5 real minutes to see the roast overlay fire (T-106).
+    await _api.debugGrant('com.android.chrome', 1, 'testing reload-on-restart');
     await _queryStatus();
   }
 
@@ -82,7 +84,7 @@ class _ScaffoldCheckPageState extends State<ScaffoldCheckPage> {
             OutlinedButton(
               onPressed: _debugGrant,
               child: const Text(
-                'Debug grant: chrome, 5 min (dev/test only —\n'
+                'Debug grant: chrome, 1 min (dev/test only —\n'
                 'real product grants from the intent overlay, T-104)',
                 textAlign: TextAlign.center,
               ),
