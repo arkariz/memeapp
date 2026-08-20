@@ -58,14 +58,27 @@ class SessionStateMachine {
 
     /**
      * Called when the currently-foreground package changes to something
-     * other than [pkg], while [pkg] was ROASTING — the "app left" edge in
-     * the diagram. RUNNING sessions are untouched: expiry is wall-clock,
-     * so leaving before the limit doesn't need special handling.
+     * other than [pkg]. Two cases matter:
+     *  - ROASTING -> ENDING (the diagram's "app left" edge).
+     *  - INTENT_PENDING -> IDLE: the user backed out of the intent-capture
+     *    overlay (T-104) without granting. There's no session to "end" —
+     *    nothing was ever agreed to — so this resets cleanly rather than
+     *    going through ENDING, and critically un-sticks the package so
+     *    onAppForegrounded() will show the overlay again next time (its
+     *    guard only fires from IDLE).
+     * RUNNING sessions are untouched: expiry is wall-clock, so leaving
+     * before the limit doesn't need special handling.
      */
     fun onAppLeft(pkg: String, now: Long) {
         val session = sessions[pkg] ?: return
-        if (session.state != SessionState.ROASTING) return
-        transitionToEnding(session, now)
+        when (session.state) {
+            SessionState.ROASTING -> transitionToEnding(session, now)
+            SessionState.INTENT_PENDING -> {
+                session.state = SessionState.IDLE
+                Log.i(TAG, "pkg=$pkg INTENT_PENDING -> IDLE (abandoned, no grant)")
+            }
+            else -> Unit
+        }
     }
 
     /** INTENT_PENDING -> RUNNING. Rejects grants for sessions not awaiting one. */

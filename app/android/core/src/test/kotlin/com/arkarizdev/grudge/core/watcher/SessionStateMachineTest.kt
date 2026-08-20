@@ -128,6 +128,19 @@ class SessionStateMachineTest {
     }
 
     @Test
+    fun `abandoning the intent overlay resets to IDLE, not stuck`() {
+        val sm = SessionStateMachine()
+        sm.onAppForegrounded(pkg, t0) // -> INTENT_PENDING, no grant yet
+
+        sm.onAppLeft(pkg, now = t0 + 500) // user backed out without granting
+        assertEquals(SessionState.IDLE, sm.snapshot(pkg)?.state)
+
+        // Un-stuck: opening the app again shows the overlay, doesn't no-op.
+        sm.onAppForegrounded(pkg, now = t0 + 10_000)
+        assertEquals(SessionState.INTENT_PENDING, sm.snapshot(pkg)?.state)
+    }
+
+    @Test
     fun `activeSessionCount excludes IDLE sessions`() {
         val sm = SessionStateMachine()
         val other = "com.example.other"

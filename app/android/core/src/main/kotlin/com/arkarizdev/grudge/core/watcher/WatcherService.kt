@@ -9,6 +9,7 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.os.IBinder
+import android.provider.Settings
 import android.util.Log
 import com.arkarizdev.grudge.core.data.GrudgeDatabase
 import com.arkarizdev.grudge.core.data.SessionDao
@@ -62,6 +63,7 @@ class WatcherService : Service() {
     private lateinit var usm: UsageStatsManager
     private lateinit var db: GrudgeDatabase
     private lateinit var heartbeat: HeartbeatStore
+    private lateinit var intentOverlay: IntentOverlayController
     private val sessionStateMachine = SessionStateMachine()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var lastQueryTs = 0L
@@ -76,6 +78,7 @@ class WatcherService : Service() {
         usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         db = GrudgeDatabase.get(this)
         heartbeat = HeartbeatStore(db.heartbeatDao())
+        intentOverlay = IntentOverlayController(this)
 
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
@@ -172,14 +175,45 @@ class WatcherService : Service() {
             currentForegroundPkg = e.packageName
             if (previousForeground != null && previousForeground != e.packageName) {
                 sessionStateMachine.onAppLeft(previousForeground, now)
+                intentOverlay.dismissIfShowing(previousForeground)
             }
             if (e.packageName in watchedPkgs) {
                 sessionStateMachine.onAppForegrounded(e.packageName, now)
+                maybeShowIntentOverlay(e.packageName, e.timeStamp)
             }
         }
 
         sessionStateMachine.tick(now)
         persistActiveSessions()
+    }
+
+    /**
+     * Shows the overlay only when the state machine is actually
+     * INTENT_PENDING (fresh transition, or still awaiting a grant from an
+     * earlier tick) — a no-op for RUNNING/ROASTING packages. Uses the
+     * event's own timestamp, not poll-tick `now`, for latency logging —
+     * same methodology as the spike (spike/README.md).
+     */
+    private fun maybeShowIntentOverlay(pkg: String, eventTs: Long) {
+        if (sessionStateMachine.snapshot(pkg)?.state != SessionState.INTENT_PENDING) return
+        if (!Settings.canDrawOverlays(this)) {
+            Log.w(TAG, "pkg=$pkg wants intent overlay but SYSTEM_ALERT_WINDOW not granted")
+            return
+        }
+        intentOverlay.show(pkg, eventTs) { minutes, intentText ->
+            val now = System.currentTimeMillis()
+            val ok = sessionStateMachine.grant(pkg, minutes, intentText, now)
+            Log.i(TAG, "grant pkg=$pkg minutes=$minutes ok=$ok")
+            if (ok) {
+                serviceScope.launch {
+                    try {
+                        persistActiveSessions()
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "persist after grant failed", t)
+                    }
+                }
+            }
+        }
     }
 
     /**

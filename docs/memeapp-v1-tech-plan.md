@@ -214,7 +214,7 @@ Sizes: **S** ≤ 1 day · **M** 2–4 days · **L** ~1 week. Solo-dev estimates.
 | T-101 | ~~Repo scaffold: Flutter app + Kotlin core module + Pigeon contracts + CI debug build~~ — **done**, started ahead of T-002's formal sign-off per explicit direction; app/ builds clean (`flutter analyze` 0 issues, test passes, debug APK builds) | M | T-002 | — |
 | T-102 | ~~Port spike → WatcherService with SessionStateMachine; heartbeat writer~~ — **done**, 11/11 unit tests pass, verified live on emulator (real heartbeat, real IDLE→INTENT_PENDING transition on Chrome open) | M | T-101 | P0-2 |
 | T-103 | ~~Room schema + DAOs + grant-reload-on-restart~~ — **done**, 14/14 unit tests pass, live-verified across a real force-stop + reinstall (grant survived, correctly re-derived ROASTING since its expiry had passed while dead) | M | T-101 | P0-2 |
-| T-104 | Intent-capture overlay (native): chips, focusable text input, ≤2-tap grant, latency telemetry | L | T-102 | P0-2 |
+| T-104 | ~~Intent-capture overlay (native): chips, focusable text input, ≤2-tap grant, latency telemetry~~ — **done**, 15/15 unit tests pass, live-verified end-to-end (real tap → grant → Room persist). Known minor issue: PackageManager app-label lookup falls back to raw package name for some apps (e.g. YouTube) — cosmetic, not blocking | L | T-102 | P0-2 |
 | T-105 | RoastEngine: template loader, tier selection, slot filler, precompute-at-grant | M | T-103, T-004 | P0-3 |
 | T-106 | Roast overlay (native, HW-accelerated, meme asset, **no share affordance**) | M | T-105 | P0-3 |
 | T-107 | Extension tiers: +5 tap / typed phrase / wait timer; full grant logging | M | T-106 | P0-4 |
