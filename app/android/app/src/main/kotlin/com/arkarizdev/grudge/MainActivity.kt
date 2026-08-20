@@ -1,5 +1,6 @@
 package com.arkarizdev.grudge
 
+import com.arkarizdev.grudge.core.watcher.OnboardingPrefs
 import com.arkarizdev.grudge.core.watcher.WatcherCore
 import com.arkarizdev.grudge.core.watcher.WatcherService
 import io.flutter.embedding.android.FlutterActivity
@@ -10,9 +11,30 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class MainActivity : FlutterActivity() {
+    private val flutterApiScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var flutterApi: WatcherFlutterApi? = null
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         WatcherHostApi.setUp(flutterEngine.dartExecutor.binaryMessenger, WatcherApiHandler(this))
+        flutterApi = WatcherFlutterApi(flutterEngine.dartExecutor.binaryMessenger)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != NOTIFICATION_PERMISSION_REQUEST_CODE) return
+        val granted = grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+        flutterApiScope.launch {
+            flutterApi?.onNotificationPermissionResult(granted) {}
+        }
+    }
+
+    companion object {
+        const val NOTIFICATION_PERMISSION_REQUEST_CODE = 4210
     }
 }
 
@@ -46,5 +68,73 @@ private class WatcherApiHandler(private val activity: MainActivity) : WatcherHos
 
     override fun debugGrant(pkg: String, minutes: Long, intentText: String?) {
         WatcherService.instance?.debugGrant(pkg, minutes.toInt(), intentText)
+    }
+
+    override fun getLaunchableApps(callback: (Result<List<AppInfoDto>>) -> Unit) {
+        callback(
+            Result.success(
+                WatcherCore.getLaunchableApps(activity).map { AppInfoDto(pkg = it.pkg, label = it.label) }
+            )
+        )
+    }
+
+    override fun getWatchedApps(callback: (Result<List<WatchedAppConfigDto>>) -> Unit) {
+        scope.launch {
+            val apps = WatcherCore.getWatchedApps(activity).map {
+                WatchedAppConfigDto(pkg = it.pkg, label = it.label, budgetMin = it.budgetMin.toLong(), enabled = it.enabled)
+            }
+            callback(Result.success(apps))
+        }
+    }
+
+    override fun saveWatchedApps(apps: List<WatchedAppConfigDto>, callback: (Result<Unit>) -> Unit) {
+        scope.launch {
+            WatcherCore.saveWatchedApps(
+                activity,
+                apps.map {
+                    com.arkarizdev.grudge.core.watcher.WatchedAppConfig(
+                        pkg = it.pkg,
+                        label = it.label,
+                        budgetMin = it.budgetMin.toInt(),
+                        enabled = it.enabled,
+                    )
+                },
+            )
+            callback(Result.success(Unit))
+        }
+    }
+
+    override fun getPermissionSnapshot(callback: (Result<PermissionSnapshotDto>) -> Unit) {
+        val snapshot = WatcherCore.getPermissionSnapshot(activity)
+        callback(
+            Result.success(
+                PermissionSnapshotDto(
+                    hasNotificationPermission = snapshot.hasNotificationPermission,
+                    isIgnoringBatteryOptimizations = snapshot.isIgnoringBatteryOptimizations,
+                )
+            )
+        )
+    }
+
+    override fun openUsageAccessSettings() {
+        WatcherCore.openUsageAccessSettings(activity)
+    }
+
+    override fun openOverlayPermissionSettings() {
+        WatcherCore.openOverlayPermissionSettings(activity)
+    }
+
+    override fun requestNotificationPermission() {
+        WatcherCore.requestNotificationPermission(activity, MainActivity.NOTIFICATION_PERMISSION_REQUEST_CODE)
+    }
+
+    override fun requestBatteryExemption() {
+        WatcherCore.requestBatteryExemption(activity)
+    }
+
+    override fun isOnboardingComplete(): Boolean = OnboardingPrefs.isComplete(activity)
+
+    override fun setOnboardingComplete() {
+        OnboardingPrefs.setComplete(activity)
     }
 }

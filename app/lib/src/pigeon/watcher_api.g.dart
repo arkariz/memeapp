@@ -34,6 +34,16 @@ Object? _extractReplyValueOrThrow(
   return replyList.firstOrNull;
 }
 
+
+List<Object?> wrapResponse({Object? result, PlatformException? error, bool empty = false}) {
+  if (empty) {
+    return <Object?>[];
+  }
+  if (error == null) {
+    return <Object?>[result];
+  }
+  return <Object?>[error.code, error.message, error.details];
+}
 bool _deepEquals(Object? a, Object? b) {
   if (identical(a, b)) {
     return true;
@@ -165,6 +175,176 @@ class WatcherStatusDto {
   }
 }
 
+/// One launchable app, for the T-109 app-picker step. Sourced via a
+/// launcher-intent `<queries>` declaration (PackageManager.queryIntentActivities
+/// against ACTION_MAIN/CATEGORY_LAUNCHER) — never QUERY_ALL_PACKAGES, per
+/// PRD P0-1 and the Play Console declaration in T-003. No icon bitmap: the
+/// brutalist visual language (flat ink/paper/yellow, no photorealism) uses
+/// a text-initial avatar instead, so there's no need to round-trip
+/// per-density launcher icons through Pigeon.
+class AppInfoDto {
+  AppInfoDto({
+    required this.pkg,
+    required this.label,
+  });
+
+  String pkg;
+
+  String label;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      pkg,
+      label,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static AppInfoDto decode(Object result) {
+    result as List<Object?>;
+    return AppInfoDto(
+      pkg: result[0]! as String,
+      label: result[1]! as String,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! AppInfoDto || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(pkg, other.pkg) && _deepEquals(label, other.label);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'AppInfoDto(pkg: $pkg, label: $label)';
+  }
+}
+
+/// One row of the watched_app table, as edited by the T-109 app picker.
+class WatchedAppConfigDto {
+  WatchedAppConfigDto({
+    required this.pkg,
+    required this.label,
+    required this.budgetMin,
+    required this.enabled,
+  });
+
+  String pkg;
+
+  String label;
+
+  int budgetMin;
+
+  bool enabled;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      pkg,
+      label,
+      budgetMin,
+      enabled,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static WatchedAppConfigDto decode(Object result) {
+    result as List<Object?>;
+    return WatchedAppConfigDto(
+      pkg: result[0]! as String,
+      label: result[1]! as String,
+      budgetMin: result[2]! as int,
+      enabled: result[3]! as bool,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! WatchedAppConfigDto || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(pkg, other.pkg) && _deepEquals(label, other.label) && _deepEquals(budgetMin, other.budgetMin) && _deepEquals(enabled, other.enabled);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'WatchedAppConfigDto(pkg: $pkg, label: $label, budgetMin: $budgetMin, enabled: $enabled)';
+  }
+}
+
+/// Snapshot of every special-access grant T-109's onboarding walks through,
+/// beyond the two already in WatcherStatusDto (usage access, overlay).
+class PermissionSnapshotDto {
+  PermissionSnapshotDto({
+    required this.hasNotificationPermission,
+    required this.isIgnoringBatteryOptimizations,
+  });
+
+  bool hasNotificationPermission;
+
+  bool isIgnoringBatteryOptimizations;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      hasNotificationPermission,
+      isIgnoringBatteryOptimizations,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static PermissionSnapshotDto decode(Object result) {
+    result as List<Object?>;
+    return PermissionSnapshotDto(
+      hasNotificationPermission: result[0]! as bool,
+      isIgnoringBatteryOptimizations: result[1]! as bool,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! PermissionSnapshotDto || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(hasNotificationPermission, other.hasNotificationPermission) && _deepEquals(isIgnoringBatteryOptimizations, other.isIgnoringBatteryOptimizations);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'PermissionSnapshotDto(hasNotificationPermission: $hasNotificationPermission, isIgnoringBatteryOptimizations: $isIgnoringBatteryOptimizations)';
+  }
+}
+
 
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
@@ -176,6 +356,15 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is WatcherStatusDto) {
       buffer.putUint8(129);
       writeValue(buffer, value.encode());
+    }    else if (value is AppInfoDto) {
+      buffer.putUint8(130);
+      writeValue(buffer, value.encode());
+    }    else if (value is WatchedAppConfigDto) {
+      buffer.putUint8(131);
+      writeValue(buffer, value.encode());
+    }    else if (value is PermissionSnapshotDto) {
+      buffer.putUint8(132);
+      writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
     }
@@ -186,6 +375,12 @@ class _PigeonCodec extends StandardMessageCodec {
     switch (type) {
       case 129:
         return WatcherStatusDto.decode(readValue(buffer)!);
+      case 130:
+        return AppInfoDto.decode(readValue(buffer)!);
+      case 131:
+        return WatchedAppConfigDto.decode(readValue(buffer)!);
+      case 132:
+        return PermissionSnapshotDto.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -267,5 +462,240 @@ class WatcherHostApi {
         isNullValid: true,
     )
     ;
+  }
+
+  /// T-109: the app picker's data source — every launchable app on-device,
+  /// via the launcher-intent `<queries>` declaration.
+  Future<List<AppInfoDto>> getLaunchableApps() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.getLaunchableApps$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return (pigeonVar_replyValue! as List<Object?>).cast<AppInfoDto>();
+  }
+
+  /// T-109: current watched_app rows (empty on first run), so the app
+  /// picker can pre-select apps if onboarding is re-entered (revocation
+  /// recovery) rather than always starting from a blank slate.
+  Future<List<WatchedAppConfigDto>> getWatchedApps() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.getWatchedApps$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return (pigeonVar_replyValue! as List<Object?>).cast<WatchedAppConfigDto>();
+  }
+
+  /// T-109: replaces the entire watched_app table with the picker's final
+  /// selection + per-app budgets. Full-replace, not incremental — the
+  /// picker screen always shows and edits the complete set.
+  Future<void> saveWatchedApps(List<WatchedAppConfigDto> apps) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.saveWatchedApps$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[apps]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  /// T-109: the two special-access grants not already covered by
+  /// WatcherStatusDto (usage access, overlay permission).
+  Future<PermissionSnapshotDto> getPermissionSnapshot() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.getPermissionSnapshot$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as PermissionSnapshotDto;
+  }
+
+  Future<void> openUsageAccessSettings() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.openUsageAccessSettings$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  Future<void> openOverlayPermissionSettings() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.openOverlayPermissionSettings$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  /// Fires the in-app runtime permission dialog (POST_NOTIFICATIONS,
+  /// API 33+; a no-op grant on older OSes). Result arrives asynchronously
+  /// via WatcherFlutterApi.onNotificationPermissionResult, not a return
+  /// value here, since Android's permission callback is itself async.
+  Future<void> requestNotificationPermission() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.requestNotificationPermission$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  /// Launches the system's ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+  /// dialog directly (not a Settings page detour) with an honest
+  /// explanation shown beforehand in-app, per PRD P0-1.
+  Future<void> requestBatteryExemption() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.requestBatteryExemption$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  Future<bool> isOnboardingComplete() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.isOnboardingComplete$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as bool;
+  }
+
+  Future<void> setOnboardingComplete() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.setOnboardingComplete$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+}
+
+/// Kotlin -> Dart: the one result Android can only deliver via callback,
+/// since ActivityCompat.requestPermissions itself is async on the platform
+/// side (onRequestPermissionsResult, not a return value).
+abstract class WatcherFlutterApi {
+  static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
+
+  void onNotificationPermissionResult(bool granted);
+
+  static void setUp(WatcherFlutterApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
+    messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.grudge.WatcherFlutterApi.onNotificationPermissionResult$messageChannelSuffix', pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          final List<Object?> args = message! as List<Object?>;
+          final bool arg_granted = args[0]! as bool;
+          try {
+            api.onNotificationPermissionResult(arg_granted);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          }          catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
   }
 }

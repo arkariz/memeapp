@@ -28,6 +28,23 @@ interface WatchedAppDao {
     @Query("SELECT * FROM watched_app WHERE enabled = 1")
     suspend fun enabled(): List<WatchedAppEntity>
 
+    @Query("SELECT * FROM watched_app")
+    suspend fun all(): List<WatchedAppEntity>
+
     @Query("SELECT COUNT(*) FROM watched_app")
     suspend fun count(): Int
+
+    @Query("DELETE FROM watched_app")
+    suspend fun clearAll()
+
+    /**
+     * T-109: the app picker always edits the complete set, so saving is a
+     * full replace rather than a diff/merge — clearAll+insertAll in one
+     * transaction so a crash mid-save can't leave a half-written table.
+     */
+    @androidx.room.Transaction
+    suspend fun replaceAll(apps: List<WatchedAppEntity>) {
+        clearAll()
+        insertAll(apps)
+    }
 }

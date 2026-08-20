@@ -1,7 +1,6 @@
 package com.arkarizdev.grudge.core.watcher
 
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Handler
@@ -220,12 +219,7 @@ class IntentOverlayController(private val context: Context) {
         setStroke(dp(3), COLOR_INK)
     }
 
-    private fun appLabel(pkg: String): String = try {
-        val pm = context.packageManager
-        pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
-    } catch (_: PackageManager.NameNotFoundException) {
-        pkg
-    }
+    private fun appLabel(pkg: String): String = resolveAppLabel(context, pkg)
 
     private fun dp(value: Int): Int =
         (value * context.resources.displayMetrics.density).toInt()

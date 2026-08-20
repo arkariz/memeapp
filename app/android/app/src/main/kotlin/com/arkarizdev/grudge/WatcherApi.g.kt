@@ -15,6 +15,9 @@ import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 private object WatcherApiPigeonUtils {
 
+  fun createConnectionError(channelName: String): FlutterError {
+    return FlutterError("channel-error",  "Unable to establish connection on channel: '$channelName'.", "")  }
+
   fun wrapResult(result: Any?): List<Any?> {
     return listOf(result)
   }
@@ -250,12 +253,177 @@ data class WatcherStatusDto (
     return "WatcherStatusDto(isRunning=$isRunning, heartbeatAgeMs=$heartbeatAgeMs, hasUsageAccess=$hasUsageAccess, hasOverlayPermission=$hasOverlayPermission, activeSessionCount=$activeSessionCount)"
   }
 }
+
+/**
+ * One launchable app, for the T-109 app-picker step. Sourced via a
+ * launcher-intent `<queries>` declaration (PackageManager.queryIntentActivities
+ * against ACTION_MAIN/CATEGORY_LAUNCHER) — never QUERY_ALL_PACKAGES, per
+ * PRD P0-1 and the Play Console declaration in T-003. No icon bitmap: the
+ * brutalist visual language (flat ink/paper/yellow, no photorealism) uses
+ * a text-initial avatar instead, so there's no need to round-trip
+ * per-density launcher icons through Pigeon.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class AppInfoDto (
+  val pkg: String,
+  val label: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): AppInfoDto {
+      val pkg = pigeonVar_list[0] as String
+      val label = pigeonVar_list[1] as String
+      return AppInfoDto(pkg, label)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      pkg,
+      label,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as AppInfoDto
+    return WatcherApiPigeonUtils.deepEquals(this.pkg, other.pkg) && WatcherApiPigeonUtils.deepEquals(this.label, other.label)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.pkg)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.label)
+    return result
+  }
+  override fun toString(): String {
+    return "AppInfoDto(pkg=$pkg, label=$label)"
+  }
+}
+
+/**
+ * One row of the watched_app table, as edited by the T-109 app picker.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class WatchedAppConfigDto (
+  val pkg: String,
+  val label: String,
+  val budgetMin: Long,
+  val enabled: Boolean
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): WatchedAppConfigDto {
+      val pkg = pigeonVar_list[0] as String
+      val label = pigeonVar_list[1] as String
+      val budgetMin = pigeonVar_list[2] as Long
+      val enabled = pigeonVar_list[3] as Boolean
+      return WatchedAppConfigDto(pkg, label, budgetMin, enabled)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      pkg,
+      label,
+      budgetMin,
+      enabled,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as WatchedAppConfigDto
+    return WatcherApiPigeonUtils.deepEquals(this.pkg, other.pkg) && WatcherApiPigeonUtils.deepEquals(this.label, other.label) && WatcherApiPigeonUtils.deepEquals(this.budgetMin, other.budgetMin) && WatcherApiPigeonUtils.deepEquals(this.enabled, other.enabled)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.pkg)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.label)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.budgetMin)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.enabled)
+    return result
+  }
+  override fun toString(): String {
+    return "WatchedAppConfigDto(pkg=$pkg, label=$label, budgetMin=$budgetMin, enabled=$enabled)"
+  }
+}
+
+/**
+ * Snapshot of every special-access grant T-109's onboarding walks through,
+ * beyond the two already in WatcherStatusDto (usage access, overlay).
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class PermissionSnapshotDto (
+  val hasNotificationPermission: Boolean,
+  val isIgnoringBatteryOptimizations: Boolean
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PermissionSnapshotDto {
+      val hasNotificationPermission = pigeonVar_list[0] as Boolean
+      val isIgnoringBatteryOptimizations = pigeonVar_list[1] as Boolean
+      return PermissionSnapshotDto(hasNotificationPermission, isIgnoringBatteryOptimizations)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      hasNotificationPermission,
+      isIgnoringBatteryOptimizations,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as PermissionSnapshotDto
+    return WatcherApiPigeonUtils.deepEquals(this.hasNotificationPermission, other.hasNotificationPermission) && WatcherApiPigeonUtils.deepEquals(this.isIgnoringBatteryOptimizations, other.isIgnoringBatteryOptimizations)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.hasNotificationPermission)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.isIgnoringBatteryOptimizations)
+    return result
+  }
+  override fun toString(): String {
+    return "PermissionSnapshotDto(hasNotificationPermission=$hasNotificationPermission, isIgnoringBatteryOptimizations=$isIgnoringBatteryOptimizations)"
+  }
+}
 private open class WatcherApiPigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
       129.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           WatcherStatusDto.fromList(it)
+        }
+      }
+      130.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          AppInfoDto.fromList(it)
+        }
+      }
+      131.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          WatchedAppConfigDto.fromList(it)
+        }
+      }
+      132.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PermissionSnapshotDto.fromList(it)
         }
       }
       else -> super.readValueOfType(type, buffer)
@@ -265,6 +433,18 @@ private open class WatcherApiPigeonCodec : StandardMessageCodec() {
     when (value) {
       is WatcherStatusDto -> {
         stream.write(129)
+        writeValue(stream, value.toList())
+      }
+      is AppInfoDto -> {
+        stream.write(130)
+        writeValue(stream, value.toList())
+      }
+      is WatchedAppConfigDto -> {
+        stream.write(131)
+        writeValue(stream, value.toList())
+      }
+      is PermissionSnapshotDto -> {
+        stream.write(132)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -294,6 +474,45 @@ interface WatcherHostApi {
    * restart" without T-104's intent overlay existing yet.
    */
   fun debugGrant(pkg: String, minutes: Long, intentText: String?)
+  /**
+   * T-109: the app picker's data source — every launchable app on-device,
+   * via the launcher-intent `<queries>` declaration.
+   */
+  fun getLaunchableApps(callback: (Result<List<AppInfoDto>>) -> Unit)
+  /**
+   * T-109: current watched_app rows (empty on first run), so the app
+   * picker can pre-select apps if onboarding is re-entered (revocation
+   * recovery) rather than always starting from a blank slate.
+   */
+  fun getWatchedApps(callback: (Result<List<WatchedAppConfigDto>>) -> Unit)
+  /**
+   * T-109: replaces the entire watched_app table with the picker's final
+   * selection + per-app budgets. Full-replace, not incremental — the
+   * picker screen always shows and edits the complete set.
+   */
+  fun saveWatchedApps(apps: List<WatchedAppConfigDto>, callback: (Result<Unit>) -> Unit)
+  /**
+   * T-109: the two special-access grants not already covered by
+   * WatcherStatusDto (usage access, overlay permission).
+   */
+  fun getPermissionSnapshot(callback: (Result<PermissionSnapshotDto>) -> Unit)
+  fun openUsageAccessSettings()
+  fun openOverlayPermissionSettings()
+  /**
+   * Fires the in-app runtime permission dialog (POST_NOTIFICATIONS,
+   * API 33+; a no-op grant on older OSes). Result arrives asynchronously
+   * via WatcherFlutterApi.onNotificationPermissionResult, not a return
+   * value here, since Android's permission callback is itself async.
+   */
+  fun requestNotificationPermission()
+  /**
+   * Launches the system's ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+   * dialog directly (not a Settings page detour) with an honest
+   * explanation shown beforehand in-app, per PRD P0-1.
+   */
+  fun requestBatteryExemption()
+  fun isOnboardingComplete(): Boolean
+  fun setOnboardingComplete()
 
   companion object {
     /** The codec used by WatcherHostApi. */
@@ -358,6 +577,206 @@ interface WatcherHostApi {
           channel.setMessageHandler(null)
         }
       }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.getLaunchableApps$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getLaunchableApps{ result: Result<List<AppInfoDto>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(WatcherApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(WatcherApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.getWatchedApps$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getWatchedApps{ result: Result<List<WatchedAppConfigDto>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(WatcherApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(WatcherApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.saveWatchedApps$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val appsArg = args[0] as List<WatchedAppConfigDto>
+            api.saveWatchedApps(appsArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(WatcherApiPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(WatcherApiPigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.getPermissionSnapshot$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getPermissionSnapshot{ result: Result<PermissionSnapshotDto> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(WatcherApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(WatcherApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.openUsageAccessSettings$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              api.openUsageAccessSettings()
+              listOf(null)
+            } catch (exception: Throwable) {
+              WatcherApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.openOverlayPermissionSettings$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              api.openOverlayPermissionSettings()
+              listOf(null)
+            } catch (exception: Throwable) {
+              WatcherApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.requestNotificationPermission$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              api.requestNotificationPermission()
+              listOf(null)
+            } catch (exception: Throwable) {
+              WatcherApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.requestBatteryExemption$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              api.requestBatteryExemption()
+              listOf(null)
+            } catch (exception: Throwable) {
+              WatcherApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.isOnboardingComplete$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.isOnboardingComplete())
+            } catch (exception: Throwable) {
+              WatcherApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.setOnboardingComplete$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              api.setOnboardingComplete()
+              listOf(null)
+            } catch (exception: Throwable) {
+              WatcherApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
+}
+/**
+ * Kotlin -> Dart: the one result Android can only deliver via callback,
+ * since ActivityCompat.requestPermissions itself is async on the platform
+ * side (onRequestPermissionsResult, not a return value).
+ *
+ * Generated class from Pigeon that represents Flutter messages that can be called from Kotlin.
+ */
+class WatcherFlutterApi(private val binaryMessenger: BinaryMessenger, private val messageChannelSuffix: String = "") {
+  companion object {
+    /** The codec used by WatcherFlutterApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      WatcherApiPigeonCodec()
+    }
+  }
+  fun onNotificationPermissionResult(grantedArg: Boolean, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.grudge.WatcherFlutterApi.onNotificationPermissionResult$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(grantedArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(WatcherApiPigeonUtils.createConnectionError(channelName)))
+      } 
     }
   }
 }
