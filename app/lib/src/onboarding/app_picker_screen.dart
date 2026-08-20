@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../core/watcher_repository.dart';
 import '../pigeon/watcher_api.g.dart';
 import '../theme/grudge_theme.dart';
 import 'permission_flow.dart';
 
 /// OB-1: app picker + per-app daily budget. PRD P0-1: "App picker for
 /// watched apps ... per-app daily budget setting." Data source is
-/// WatcherHostApi.getLaunchableApps (launcher-intent query, never
+/// WatcherRepository.getLaunchableApps (launcher-intent query, never
 /// QUERY_ALL_PACKAGES — see WatcherCore.getLaunchableApps's own doc
 /// comment). Pre-selects whatever's already in watched_app so re-entering
 /// onboarding (e.g. from a future revocation-recovery flow) doesn't wipe a
 /// prior selection.
 class AppPickerScreen extends StatefulWidget {
-  const AppPickerScreen({super.key});
+  const AppPickerScreen({super.key, required this.repo});
+
+  final WatcherRepository repo;
 
   @override
   State<AppPickerScreen> createState() => _AppPickerScreenState();
@@ -22,7 +25,6 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
   static const _budgetOptions = [5, 10, 15, 30];
   static const _defaultBudget = 15;
 
-  final _api = WatcherHostApi();
   final _searchController = TextEditingController();
 
   List<AppInfoDto> _apps = [];
@@ -44,7 +46,7 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
   }
 
   Future<void> _load() async {
-    final results = await Future.wait([_api.getLaunchableApps(), _api.getWatchedApps()]);
+    final results = await Future.wait([widget.repo.getLaunchableApps(), widget.repo.getWatchedApps()]);
     final apps = results[0] as List<AppInfoDto>;
     final existing = results[1] as List<WatchedAppConfigDto>;
     setState(() {
@@ -67,9 +69,9 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
         })
         .where((c) => c.enabled)
         .toList();
-    await _api.saveWatchedApps(toSave);
+    await widget.repo.saveWatchedApps(toSave);
     if (!mounted) return;
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PermissionFlow()));
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => PermissionFlow(repo: widget.repo)));
   }
 
   @override

@@ -1,40 +1,44 @@
 import 'package:flutter/material.dart';
 
+import 'src/core/watcher_repository.dart';
 import 'src/home/scaffold_check_page.dart';
 import 'src/onboarding/notification_permission_bridge.dart';
 import 'src/onboarding/welcome_screen.dart';
-import 'src/pigeon/watcher_api.g.dart';
 import 'src/theme/grudge_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   NotificationPermissionBridge.instance.register();
-  runApp(const GrudgeApp());
+  runApp(GrudgeApp(repo: WatcherRepository()));
 }
 
 class GrudgeApp extends StatelessWidget {
-  const GrudgeApp({super.key});
+  const GrudgeApp({super.key, required this.repo});
+
+  final WatcherRepository repo;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Grudge',
       theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber)),
-      home: const _AppBootstrap(),
+      home: _AppBootstrap(repo: repo),
     );
   }
 }
 
 /// T-109: routes to onboarding on first run, straight to the scaffold on
 /// every later launch. The check itself (OnboardingPrefs, a SharedPreferences
-/// flag) lives entirely on the native side — see WatcherHostApi.isOnboardingComplete.
+/// flag) lives entirely on the native side — see WatcherRepository.isOnboardingComplete.
 class _AppBootstrap extends StatelessWidget {
-  const _AppBootstrap();
+  const _AppBootstrap({required this.repo});
+
+  final WatcherRepository repo;
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<bool>(
-      future: WatcherHostApi().isOnboardingComplete(),
+      future: repo.isOnboardingComplete(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Scaffold(
@@ -42,7 +46,7 @@ class _AppBootstrap extends StatelessWidget {
             body: Center(child: CircularProgressIndicator(color: GrudgeColors.ink)),
           );
         }
-        return snapshot.data! ? const ScaffoldCheckPage() : const WelcomeScreen();
+        return snapshot.data! ? ScaffoldCheckPage(repo: repo) : WelcomeScreen(repo: repo);
       },
     );
   }

@@ -180,6 +180,7 @@ class _PermissionStepScreenState extends State<PermissionStepScreen> with Widget
               Container(
                 width: double.infinity,
                 height: 200,
+                margin: EdgeInsets.symmetric(horizontal: 14),
                 clipBehavior: Clip.hardEdge,
                 decoration: hardShadowBox(fill: GrudgeColors.yellow),
                 child: Image.asset(

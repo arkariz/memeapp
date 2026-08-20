@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../pigeon/watcher_api.g.dart';
+import '../core/watcher_repository.dart';
 
 /// T-101/T-102 scaffold entry point, still the post-onboarding landing
 /// screen as of T-109 — the real Home screen (streaks, budget bars) is
@@ -8,18 +8,19 @@ import '../pigeon/watcher_api.g.dart';
 /// complete case) and the onboarding flow (fresh-completion case) can
 /// reach it without a circular import.
 class ScaffoldCheckPage extends StatefulWidget {
-  const ScaffoldCheckPage({super.key});
+  const ScaffoldCheckPage({super.key, required this.repo});
+
+  final WatcherRepository repo;
 
   @override
   State<ScaffoldCheckPage> createState() => _ScaffoldCheckPageState();
 }
 
 class _ScaffoldCheckPageState extends State<ScaffoldCheckPage> {
-  final _api = WatcherHostApi();
   String _statusText = 'Not queried yet';
 
   Future<void> _queryStatus() async {
-    final status = await _api.getStatus();
+    final status = await widget.repo.getStatus();
     setState(() {
       _statusText =
           'isRunning=${status.isRunning}\n'
@@ -31,14 +32,14 @@ class _ScaffoldCheckPageState extends State<ScaffoldCheckPage> {
   }
 
   Future<void> _startWatcher() async {
-    await _api.startWatcher();
+    await widget.repo.startWatcher();
     await _queryStatus();
   }
 
   Future<void> _debugGrant() async {
     // 1 min, not 5 — a dev/test tool is more useful when it doesn't require
     // waiting 5 real minutes to see the roast overlay fire (T-106).
-    await _api.debugGrant('com.android.chrome', 1, 'testing reload-on-restart');
+    await widget.repo.debugGrant('com.android.chrome', 1, 'testing reload-on-restart');
     await _queryStatus();
   }
 

@@ -1,18 +1,24 @@
-// Smoke test for the T-101 scaffold — verifies the app boots and the
-// Pigeon-check screen renders. Replace once real onboarding UI (T-109)
-// lands and there's an actual first screen to test.
+// Smoke test — boots the app with a fake WatcherRepository (no real
+// platform channel available in a widget test) and verifies the first
+// screen renders. Demonstrates the exact testability WatcherRepository
+// exists for: a real repo's isOnboardingComplete() would hit a
+// MethodChannel with no plugin registered and never resolve.
 
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:grudge/main.dart';
+import 'package:grudge/src/core/watcher_repository.dart';
+
+class _FakeWatcherRepository extends WatcherRepository {
+  @override
+  Future<bool> isOnboardingComplete() async => false;
+}
 
 void main() {
-  testWidgets('App boots and shows the scaffold check page', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(const GrudgeApp());
+  testWidgets('App boots and shows the welcome screen on first run', (WidgetTester tester) async {
+    await tester.pumpWidget(GrudgeApp(repo: _FakeWatcherRepository()));
+    await tester.pumpAndSettle();
 
-    expect(find.text('Grudge — T-103 scaffold check'), findsOneWidget);
-    expect(find.text('Query WatcherCore via Pigeon'), findsOneWidget);
+    expect(find.text("LET'S GO"), findsOneWidget);
   });
 }

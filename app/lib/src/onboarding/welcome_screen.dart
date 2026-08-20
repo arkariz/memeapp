@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/watcher_repository.dart';
 import '../theme/grudge_theme.dart';
 import 'app_picker_screen.dart';
 
@@ -10,7 +11,9 @@ import 'app_picker_screen.dart';
 /// earlier version built from PRD prose alone while Figma MCP was
 /// rate-limited.
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key});
+  const WelcomeScreen({super.key, required this.repo});
+
+  final WatcherRepository repo;
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +63,7 @@ class WelcomeScreen extends StatelessWidget {
                       label: "Let's go",
                       onPressed: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AppPickerScreen()),
+                          MaterialPageRoute(builder: (_) => AppPickerScreen(repo: repo)),
                         );
                       },
                     ),
