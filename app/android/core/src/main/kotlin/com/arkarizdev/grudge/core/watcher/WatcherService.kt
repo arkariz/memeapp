@@ -371,11 +371,22 @@ class WatcherService : Service() {
     /**
      * Full-sync approach, not per-transition hooks: after every tick, mirror
      * whatever's currently active into Room and drop rows for anything that
-     * fell back to IDLE. Simple and correct at poll-loop cadence for a
-     * handful of sessions; T-111 will refine this once real outcomes exist.
+     * fell back to IDLE. Called after every mutation (grant/extend/markDone)
+     * and every poll tick, so draining finished sessions here — rather than
+     * only in poll() — catches outcomes from all of those paths uniformly.
      */
     private suspend fun persistActiveSessions() {
         val dao = db.sessionDao()
+
+        // T-111: write finalized outcomes as history (endedAt/outcome/
+        // overageS) instead of deleting the row — first time a session row
+        // survives past the grant it represents.
+        for (finished in sessionStateMachine.drainFinishedSessions()) {
+            val existing = dao.findActive(finished.pkg) ?: continue
+            dao.markEnded(existing.id, finished.endedAt, finished.outcome.name, finished.overageS, finished.extensions)
+            Log.i(TAG, "session ended pkg=${finished.pkg} outcome=${finished.outcome} overageS=${finished.overageS}")
+        }
+
         val active = sessionStateMachine.allActiveSessions()
         val activePkgs = active.map { it.pkg }.toSet()
 
@@ -389,7 +400,10 @@ class WatcherService : Service() {
             }
         }
 
-        // Clean up rows for packages that returned to IDLE since the last sync.
+        // Defensive fallback only — under normal operation the drain above
+        // already accounts for every pkg that leaves the active set via a
+        // real outcome. Anything caught here would mean a path exists that
+        // drops to IDLE without finalizing, which would itself be a bug.
         val previouslyActive = dao.findAllActive().map { it.pkg }.toSet()
         for (pkg in previouslyActive - activePkgs) {
             dao.clearActive(pkg)

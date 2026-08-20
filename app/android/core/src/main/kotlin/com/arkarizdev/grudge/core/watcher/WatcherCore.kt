@@ -56,9 +56,16 @@ object WatcherCore {
         )
     }
 
-    /** Starts the foreground service. No-op call site should check permissions first. */
+    /**
+     * Starts the foreground service and ensures the T-110 watchdog is
+     * scheduled. No-op call site should check permissions first.
+     * KEEP policy on the watchdog schedule means repeat calls (e.g. every
+     * onboarding completion, every watchdog self-heal restart) don't stack
+     * duplicate periodic work.
+     */
     fun startWatcher(context: Context) {
         context.startForegroundService(Intent(context, WatcherService::class.java))
+        WatchdogWorker.schedule(context)
     }
 
     /**

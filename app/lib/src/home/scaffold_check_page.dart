@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../core/watcher_repository.dart';
+import '../theme/grudge_theme.dart';
+import 'watch_down_screen.dart';
 
 /// T-101/T-102 scaffold entry point, still the post-onboarding landing
 /// screen as of T-109 — the real Home screen (streaks, budget bars) is
@@ -16,8 +18,40 @@ class ScaffoldCheckPage extends StatefulWidget {
   State<ScaffoldCheckPage> createState() => _ScaffoldCheckPageState();
 }
 
-class _ScaffoldCheckPageState extends State<ScaffoldCheckPage> {
+class _ScaffoldCheckPageState extends State<ScaffoldCheckPage> with WidgetsBindingObserver {
   String _statusText = 'Not queried yet';
+  bool _isDown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkWatchStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // T-110: catches a watcher that died while this screen sat in the
+    // background — PRD P0-1 wants this told on every open, not just once.
+    if (state == AppLifecycleState.resumed) _checkWatchStatus();
+  }
+
+  Future<void> _checkWatchStatus() async {
+    final status = await widget.repo.getStatus();
+    if (!mounted) return;
+    setState(() => _isDown = !status.isRunning || !status.hasUsageAccess || !status.hasOverlayPermission);
+  }
+
+  Future<void> _openWatchDownScreen() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => WatchDownScreen(repo: widget.repo)));
+    await _checkWatchStatus();
+  }
 
   Future<void> _queryStatus() async {
     final status = await widget.repo.getStatus();
@@ -29,6 +63,7 @@ class _ScaffoldCheckPageState extends State<ScaffoldCheckPage> {
           'hasOverlayPermission=${status.hasOverlayPermission}\n'
           'activeSessionCount=${status.activeSessionCount}';
     });
+    await _checkWatchStatus();
   }
 
   Future<void> _startWatcher() async {
@@ -47,36 +82,57 @@ class _ScaffoldCheckPageState extends State<ScaffoldCheckPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Grudge — T-103 scaffold check')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_statusText, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _queryStatus,
-              child: const Text('Query WatcherCore via Pigeon'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: _startWatcher,
-              child: const Text(
-                'Start watcher (dev/test only — real product\n'
-                'starts this from onboarding, T-109)',
-                textAlign: TextAlign.center,
+      body: Column(
+        children: [
+          if (_isDown)
+            Material(
+              color: GrudgeColors.red,
+              child: InkWell(
+                onTap: _openWatchDownScreen,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Text(
+                    'THE WATCH IS DOWN ✗ — tap to fix',
+                    style: TextStyle(color: GrudgeColors.paper, fontWeight: FontWeight.w900),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: _debugGrant,
-              child: const Text(
-                'Debug grant: chrome, 1 min (dev/test only —\n'
-                'real product grants from the intent overlay, T-104)',
-                textAlign: TextAlign.center,
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(_statusText, textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _queryStatus,
+                    child: const Text('Query WatcherCore via Pigeon'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: _startWatcher,
+                    child: const Text(
+                      'Start watcher (dev/test only — real product\n'
+                      'starts this from onboarding, T-109)',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: _debugGrant,
+                    child: const Text(
+                      'Debug grant: chrome, 1 min (dev/test only —\n'
+                      'real product grants from the intent overlay, T-104)',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

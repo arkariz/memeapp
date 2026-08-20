@@ -25,7 +25,7 @@ data class SessionEntity(
     val expiryAt: Long,
     val extensions: Int,
     val endedAt: Long? = null,
-    val outcome: String? = null, // TODO(T-111): BEATEN | OVERAGE | ABANDONED
+    val outcome: String? = null, // T-111: BEATEN | OVERAGE | EXTENDED, see SessionOutcome
     val overageS: Int? = null,
 )
 
@@ -48,4 +48,15 @@ interface SessionDao {
 
     @Query("DELETE FROM session WHERE pkg = :pkg AND endedAt IS NULL")
     suspend fun clearActive(pkg: String)
+
+    /**
+     * T-111: the row survives as history — first time that's true for this
+     * table. Replaces the old behavior where a session's row was always
+     * deleted via clearActive() the moment it left the active set.
+     */
+    @Query(
+        "UPDATE session SET endedAt = :endedAt, outcome = :outcome, overageS = :overageS, extensions = :extensions " +
+            "WHERE id = :id"
+    )
+    suspend fun markEnded(id: Long, endedAt: Long, outcome: String, overageS: Int?, extensions: Int)
 }

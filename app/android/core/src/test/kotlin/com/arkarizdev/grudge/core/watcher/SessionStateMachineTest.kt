@@ -88,7 +88,7 @@ class SessionStateMachineTest {
     }
 
     @Test
-    fun `markDone moves ROASTING to ENDING then tick clears it to IDLE`() {
+    fun `markDone finalizes ROASTING to IDLE immediately, no grace`() {
         val sm = SessionStateMachine()
         sm.onAppForegrounded(pkg, t0)
         sm.grant(pkg, minutes = 5, intentText = null, now = t0)
@@ -96,9 +96,7 @@ class SessionStateMachineTest {
 
         val ok = sm.markDone(pkg, now = t0 + 5 * 60_000L)
         assertTrue(ok)
-        assertEquals(SessionState.ENDING, sm.snapshot(pkg)?.state)
 
-        sm.tick(t0 + 5 * 60_000L)
         val session = sm.snapshot(pkg)!!
         assertEquals(SessionState.IDLE, session.state)
         assertNull(session.grantedMin)
@@ -107,24 +105,124 @@ class SessionStateMachineTest {
     }
 
     @Test
-    fun `app leaving while ROASTING transitions to ENDING`() {
+    fun `markDone with no extensions finalizes OVERAGE with seconds-over`() {
+        val sm = SessionStateMachine()
+        sm.onAppForegrounded(pkg, t0)
+        sm.grant(pkg, minutes = 5, intentText = null, now = t0)
+        sm.tick(t0 + 5 * 60_000L) // -> ROASTING at exactly expiry
+
+        sm.markDone(pkg, now = t0 + 5 * 60_000L + 12_000L) // 12s after expiry
+        val finished = sm.drainFinishedSessions()
+        assertEquals(1, finished.size)
+        assertEquals(SessionOutcome.OVERAGE, finished[0].outcome)
+        assertEquals(12, finished[0].overageS)
+    }
+
+    @Test
+    fun `markDone after an extension finalizes EXTENDED, not OVERAGE`() {
+        val sm = SessionStateMachine()
+        sm.onAppForegrounded(pkg, t0)
+        sm.grant(pkg, minutes = 5, intentText = null, now = t0)
+        sm.tick(t0 + 5 * 60_000L) // -> ROASTING
+        sm.extend(pkg, additionalMinutes = 5, now = t0 + 5 * 60_000L) // -> RUNNING, extensions=1
+        sm.tick(t0 + 10 * 60_000L) // -> ROASTING again
+
+        sm.markDone(pkg, now = t0 + 10 * 60_000L)
+        val finished = sm.drainFinishedSessions()
+        assertEquals(1, finished.size)
+        assertEquals(SessionOutcome.EXTENDED, finished[0].outcome)
+        assertEquals(1, finished[0].extensions)
+        assertNull(finished[0].overageS)
+    }
+
+    @Test
+    fun `app leaving while ROASTING finalizes immediately, no grace`() {
         val sm = SessionStateMachine()
         sm.onAppForegrounded(pkg, t0)
         sm.grant(pkg, minutes = 5, intentText = null, now = t0)
         sm.tick(t0 + 5 * 60_000L) // -> ROASTING
 
         sm.onAppLeft(pkg, now = t0 + 5 * 60_000L + 100)
-        assertEquals(SessionState.ENDING, sm.snapshot(pkg)?.state)
+        assertEquals(SessionState.IDLE, sm.snapshot(pkg)?.state)
+
+        val finished = sm.drainFinishedSessions()
+        assertEquals(1, finished.size)
+        assertEquals(SessionOutcome.OVERAGE, finished[0].outcome)
     }
 
     @Test
-    fun `app leaving while RUNNING is untouched (wall-clock expiry, not paused)`() {
+    fun `app leaving while RUNNING starts the grace window, not an immediate outcome`() {
         val sm = SessionStateMachine()
         sm.onAppForegrounded(pkg, t0)
         sm.grant(pkg, minutes = 5, intentText = null, now = t0)
 
         sm.onAppLeft(pkg, now = t0 + 1_000) // left well before expiry
-        assertEquals(SessionState.RUNNING, sm.snapshot(pkg)?.state)
+        assertEquals(SessionState.ENDING, sm.snapshot(pkg)?.state)
+        assertTrue(sm.drainFinishedSessions().isEmpty()) // not finalized yet
+    }
+
+    @Test
+    fun `returning within the grace window resumes RUNNING unchanged`() {
+        val sm = SessionStateMachine()
+        sm.onAppForegrounded(pkg, t0)
+        sm.grant(pkg, minutes = 5, intentText = null, now = t0)
+        val originalExpiry = sm.snapshot(pkg)!!.expiryAt
+
+        sm.onAppLeft(pkg, now = t0 + 1_000)
+        sm.onAppForegrounded(pkg, now = t0 + 10_000) // back within 60s
+
+        val session = sm.snapshot(pkg)!!
+        assertEquals(SessionState.RUNNING, session.state)
+        assertEquals(originalExpiry, session.expiryAt) // clock never paused, never reset
+        assertTrue(sm.drainFinishedSessions().isEmpty())
+    }
+
+    @Test
+    fun `no return within the grace window finalizes BEATEN`() {
+        val sm = SessionStateMachine()
+        sm.onAppForegrounded(pkg, t0)
+        sm.grant(pkg, minutes = 5, intentText = null, now = t0)
+
+        sm.onAppLeft(pkg, now = t0 + 1_000)
+        sm.tick(t0 + 1_000 + 59_000L) // grace not yet elapsed
+        assertEquals(SessionState.ENDING, sm.snapshot(pkg)?.state)
+
+        sm.tick(t0 + 1_000 + 60_000L) // grace elapsed, no return
+        val session = sm.snapshot(pkg)!!
+        assertEquals(SessionState.IDLE, session.state)
+
+        val finished = sm.drainFinishedSessions()
+        assertEquals(1, finished.size)
+        assertEquals(SessionOutcome.BEATEN, finished[0].outcome)
+        assertNull(finished[0].overageS)
+    }
+
+    @Test
+    fun `grace-window BEATEN is overridden to EXTENDED if the session was ever extended`() {
+        val sm = SessionStateMachine()
+        sm.onAppForegrounded(pkg, t0)
+        sm.grant(pkg, minutes = 5, intentText = null, now = t0)
+        sm.tick(t0 + 5 * 60_000L) // -> ROASTING
+        sm.extend(pkg, additionalMinutes = 5, now = t0 + 5 * 60_000L) // -> RUNNING, extensions=1
+
+        sm.onAppLeft(pkg, now = t0 + 6 * 60_000L) // leaves early against the NEW deadline
+        sm.tick(t0 + 6 * 60_000L + 60_000L) // grace elapsed
+
+        val finished = sm.drainFinishedSessions()
+        assertEquals(1, finished.size)
+        assertEquals(SessionOutcome.EXTENDED, finished[0].outcome)
+    }
+
+    @Test
+    fun `drainFinishedSessions clears after reading`() {
+        val sm = SessionStateMachine()
+        sm.onAppForegrounded(pkg, t0)
+        sm.grant(pkg, minutes = 5, intentText = null, now = t0)
+        sm.tick(t0 + 5 * 60_000L)
+        sm.markDone(pkg, now = t0 + 5 * 60_000L)
+
+        assertEquals(1, sm.drainFinishedSessions().size)
+        assertTrue(sm.drainFinishedSessions().isEmpty())
     }
 
     @Test

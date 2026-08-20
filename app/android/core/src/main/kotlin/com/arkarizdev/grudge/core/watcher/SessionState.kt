@@ -9,9 +9,16 @@ package com.arkarizdev.grudge.core.watcher
  *   IDLE --app foregrounded--> INTENT_PENDING
  *   INTENT_PENDING --grant(min, text?)--> RUNNING
  *   RUNNING --now >= expiry--> ROASTING
- *   ROASTING --"I'm done" / app left--> ENDING
+ *   RUNNING --app left (before expiry)--> ENDING
+ *   ENDING --returns within 60s grace--> RUNNING (resumed, unchanged expiry)
+ *   ENDING --60s grace, no return--> IDLE (T-111: outcome = BEATEN, or
+ *           EXTENDED if extensions > 0 — PRD P0-5's "no extension" clause)
  *   ROASTING --extend(tier n)--> RUNNING
- *   ENDING --60s grace, no return--> IDLE   (T-111: outcome classification)
+ *   ROASTING --"I'm done" / app left--> IDLE directly, no grace (T-111:
+ *           outcome = OVERAGE or EXTENDED — the deadline's already passed,
+ *           there's nothing left to debounce; ENDING's grace window exists
+ *           specifically to protect BEATEN from app-switch flicker, per the
+ *           tech plan's §3 note — it has no equivalent purpose here)
  */
 enum class SessionState {
     IDLE,
