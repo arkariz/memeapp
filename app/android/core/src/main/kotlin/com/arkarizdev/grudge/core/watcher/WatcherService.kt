@@ -38,6 +38,7 @@ import kotlinx.coroutines.launch
 class WatcherService : Service() {
     companion object {
         private const val TAG = "GrudgeWatcher"
+        private const val GRANT_LOG_TAG = "GrudgeGrantLog" // T-107: PRD P0-4 "every grant and extension logged"
         private const val NOTIF_CHANNEL = "watch"
         private const val NOTIF_ID = 1
         private const val DEFAULT_POLL_MS = 500L
@@ -145,6 +146,7 @@ class WatcherService : Service() {
                 Log.i(TAG, "debugGrant pkg=$pkg minutes=$minutes ok=$ok")
                 if (ok) {
                     persistActiveSessions()
+                    logGrantEvent(kind = "GRANT", pkg = pkg, minutes = minutes, extensionsSoFar = 0, hasIntentText = !intentText.isNullOrBlank(), now = now)
                     precomputeRoast(pkg, intentText, grantedMin = minutes, extensionsSoFar = 0)
                     Log.i(TAG, "debugGrant persisted pkg=$pkg")
                 }
@@ -230,6 +232,7 @@ class WatcherService : Service() {
                 line2 = payload.line2,
                 assetRef = payload.assetRef,
                 eventTs = now,
+                extensionsSoFar = session.extensions,
                 onDone = {
                     sessionStateMachine.markDone(session.pkg, System.currentTimeMillis())
                     Log.i(TAG, "markDone pkg=${session.pkg}")
@@ -244,6 +247,14 @@ class WatcherService : Service() {
                             try {
                                 persistActiveSessions()
                                 val extendedSession = sessionStateMachine.snapshot(session.pkg)
+                                logGrantEvent(
+                                    kind = "EXTEND",
+                                    pkg = session.pkg,
+                                    minutes = additionalMinutes,
+                                    extensionsSoFar = extendedSession?.extensions ?: 1,
+                                    hasIntentText = !extendedSession?.intentText.isNullOrBlank(),
+                                    now = extendNow,
+                                )
                                 precomputeRoast(
                                     pkg = session.pkg,
                                     intentText = extendedSession?.intentText,
@@ -281,6 +292,7 @@ class WatcherService : Service() {
                 serviceScope.launch {
                     try {
                         persistActiveSessions()
+                        logGrantEvent(kind = "GRANT", pkg = pkg, minutes = minutes, extensionsSoFar = 0, hasIntentText = !intentText.isNullOrBlank(), now = now)
                         precomputeRoast(pkg, intentText, grantedMin = minutes, extensionsSoFar = 0)
                     } catch (t: Throwable) {
                         Log.e(TAG, "persist/precompute after grant failed", t)
@@ -288,6 +300,31 @@ class WatcherService : Service() {
                 }
             }
         }
+    }
+
+    /**
+     * T-107 / PRD P0-4: "every grant and extension logged with timestamps
+     * and session context." A dedicated tag rather than folding into the
+     * general TAG logs keeps this filterable on its own — analytics_evt
+     * (the durable, synced event queue) stays T-203's job per its own doc
+     * comment; this is the always-on debug/observability trail, sufficient
+     * for verifying the friction gradient and grant history live via
+     * logcat without a network dependency.
+     */
+    private suspend fun logGrantEvent(
+        kind: String,
+        pkg: String,
+        minutes: Int,
+        extensionsSoFar: Int,
+        hasIntentText: Boolean,
+        now: Long,
+    ) {
+        val sessionId = db.sessionDao().findActive(pkg)?.id
+        Log.i(
+            GRANT_LOG_TAG,
+            "kind=$kind pkg=$pkg minutes=$minutes extensionsSoFar=$extensionsSoFar " +
+                "hasIntentText=$hasIntentText sessionId=$sessionId ts=$now",
+        )
     }
 
     /**

@@ -4,16 +4,21 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.arkarizdev.grudge.core.roast.RoastEngine
 
 /**
  * T-106: the roast overlay — the payoff moment. Strictly READ-ONLY: it
@@ -30,11 +35,22 @@ import android.widget.TextView
  * NO SHARE AFFORDANCE — this is a hard product requirement (PRD/tech plan:
  * "no share affordance on the roast overlay ever — sharing is success-side
  * only"), not an oversight. Do not add one here.
+ *
+ * T-107: the extend control is a friction gradient, not a fixed button —
+ * PRD P0-4 "more time is always available, at escalating friction (tap →
+ * type a phrase → wait timer)". Tier is derived from the session's own
+ * extension count via RoastEngine.tierFor — the same function that already
+ * picks the roast copy's tier, so the friction and the joke escalate in
+ * lockstep for free. Every tier still grants the same EXTEND_MINUTES; only
+ * the cost of pressing the button changes (the copy itself gets drier per
+ * tier, which is RoastEngine/roast_pack.json's job, not this overlay's).
  */
 class RoastOverlayController(private val context: Context) {
     companion object {
         private const val TAG = "GrudgeRoastOverlay"
-        private const val EXTEND_MINUTES = 5 // tier-1 "+5 min" per Figma; T-107 adds escalating tiers
+        private const val EXTEND_MINUTES = 5
+        private const val CONFIRM_PHRASE = "I HAVE NO SELF CONTROL"
+        private const val WAIT_TIMER_SECONDS = 15
 
         private const val COLOR_INK = 0xFF0D0D0D.toInt()
         private const val COLOR_PAPER = 0xFFFFFFFF.toInt()
@@ -45,6 +61,11 @@ class RoastOverlayController(private val context: Context) {
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val mainHandler = Handler(Looper.getMainLooper())
     private var overlayView: View? = null
+
+    // Only live while a tier-3 (wait timer) control is on screen. Must be
+    // cancelled on every teardown, or a callback could fire onFinish() and
+    // touch a button that's already been removed from the window.
+    private var activeCountDownTimer: CountDownTimer? = null
 
     // @Volatile: same cross-thread reasoning as IntentOverlayController —
     // read/written from both WatcherService's poll loop (Dispatchers.Default
@@ -65,12 +86,13 @@ class RoastOverlayController(private val context: Context) {
         line2: String,
         assetRef: String,
         eventTs: Long,
+        extensionsSoFar: Int,
         onDone: () -> Unit,
         onExtend: (additionalMinutes: Int) -> Unit,
     ) {
         if (shownForPkg == pkg) return
         shownForPkg = pkg
-        mainHandler.post { showOnMainThread(pkg, line1, line2, assetRef, eventTs, onDone, onExtend) }
+        mainHandler.post { showOnMainThread(pkg, line1, line2, assetRef, eventTs, extensionsSoFar, onDone, onExtend) }
     }
 
     private fun showOnMainThread(
@@ -79,6 +101,7 @@ class RoastOverlayController(private val context: Context) {
         line2: String,
         assetRef: String,
         eventTs: Long,
+        extensionsSoFar: Int,
         onDone: () -> Unit,
         onExtend: (Int) -> Unit,
     ) {
@@ -142,22 +165,8 @@ class RoastOverlayController(private val context: Context) {
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { bottomMargin = dp(8) })
 
-        root.addView(Button(context).apply {
-            text = "+$EXTEND_MINUTES MIN (WEAK)"
-            setTextColor(COLOR_PAPER)
-            setBackgroundColor(Color.TRANSPARENT)
-            isAllCaps = true
-            val border = android.graphics.drawable.GradientDrawable().apply {
-                setColor(Color.TRANSPARENT)
-                setStroke(dp(3), COLOR_PAPER)
-            }
-            background = border
-            setOnClickListener {
-                Log.i(TAG, "EXTEND tapped pkg=$pkg minutes=$EXTEND_MINUTES")
-                onExtend(EXTEND_MINUTES)
-                dismissViewOnMainThread()
-            }
-        })
+        val tier = RoastEngine.tierFor(extensionsSoFar)
+        buildExtendControl(root, pkg, tier, onExtend)
 
         root.addView(TextView(context).apply {
             text = "No share button on roasts. That's the point."
@@ -167,14 +176,25 @@ class RoastOverlayController(private val context: Context) {
             setPadding(0, dp(12), 0, 0)
         })
 
+        // Tier 2 adds a real EditText (the typed-phrase friction) that needs
+        // actual keyboard input — a NOT_FOCUSABLE window can still be tapped
+        // (hit-testing doesn't require focusability) but can NEVER receive
+        // key/IME input; the system just leaves the last focusable window
+        // (Flutter's) as the served view and every typed character goes
+        // nowhere. Caught live: the field showed a cursor (focus-looking)
+        // but `input text` silently no-opped. So the window is focusable
+        // only for tier 2; tiers 1/3 have no text field and stay
+        // NOT_FOCUSABLE, same as before T-107.
+        val focusFlag = if (tier == 2) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+            focusFlag or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.OPAQUE,
-        )
+        ).apply {
+            if (tier == 2) softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        }
 
         windowManager.addView(root, lp)
         overlayView = root
@@ -215,6 +235,8 @@ class RoastOverlayController(private val context: Context) {
      * next poll tick saw "not showing" and rebuilt again, forever.
      */
     private fun removeCurrentViewOnMainThread() {
+        activeCountDownTimer?.cancel()
+        activeCountDownTimer = null
         overlayView?.let {
             try {
                 windowManager.removeView(it)
@@ -222,6 +244,94 @@ class RoastOverlayController(private val context: Context) {
             }
         }
         overlayView = null
+    }
+
+    /**
+     * T-107 friction gradient. Tier 1 (first extend): a plain tap, same as
+     * before T-107. Tier 2 (second extend): must type CONFIRM_PHRASE
+     * exactly (case-insensitive, trimmed) before the button enables — real
+     * friction, not just an extra tap. Tier 3 (third+ extend): the button
+     * starts disabled and counts down WAIT_TIMER_SECONDS before enabling —
+     * friction that costs time instead of effort. All three ultimately
+     * grant the same EXTEND_MINUTES; only getting to press the button
+     * changes.
+     */
+    private fun buildExtendControl(root: LinearLayout, pkg: String, tier: Int, onExtend: (Int) -> Unit) {
+        when (tier) {
+            1 -> {
+                root.addView(outlinedButton("+$EXTEND_MINUTES MIN (WEAK)") {
+                    Log.i(TAG, "EXTEND tapped pkg=$pkg minutes=$EXTEND_MINUTES tier=1 friction=tap")
+                    onExtend(EXTEND_MINUTES)
+                    dismissViewOnMainThread()
+                })
+            }
+            2 -> {
+                val phraseField = EditText(context).apply {
+                    hint = "Type: $CONFIRM_PHRASE"
+                    setTextColor(COLOR_PAPER)
+                    setHintTextColor(COLOR_GRAY)
+                    setBackgroundColor(Color.TRANSPARENT)
+                    setSingleLine(true)
+                    setPadding(dp(12), dp(12), dp(12), dp(12))
+                }
+                root.addView(phraseField, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = dp(8) })
+
+                val confirmButton = outlinedButton("TYPE IT TO MEAN IT") {
+                    Log.i(TAG, "EXTEND tapped pkg=$pkg minutes=$EXTEND_MINUTES tier=2 friction=typed-phrase")
+                    onExtend(EXTEND_MINUTES)
+                    dismissViewOnMainThread()
+                }.apply {
+                    isEnabled = false
+                    alpha = 0.4f
+                }
+                phraseField.addTextChangedListener(object : TextWatcher {
+                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                    override fun afterTextChanged(s: Editable?) {
+                        val matches = s?.toString()?.trim().equals(CONFIRM_PHRASE, ignoreCase = true)
+                        confirmButton.isEnabled = matches
+                        confirmButton.alpha = if (matches) 1f else 0.4f
+                    }
+                })
+                root.addView(confirmButton)
+            }
+            else -> {
+                val waitButton = outlinedButton("WAIT ${WAIT_TIMER_SECONDS}s...") {
+                    Log.i(TAG, "EXTEND tapped pkg=$pkg minutes=$EXTEND_MINUTES tier=3 friction=wait-timer")
+                    onExtend(EXTEND_MINUTES)
+                    dismissViewOnMainThread()
+                }.apply {
+                    isEnabled = false
+                    alpha = 0.4f
+                }
+                root.addView(waitButton)
+                activeCountDownTimer = object : CountDownTimer(WAIT_TIMER_SECONDS * 1000L, 1000L) {
+                    override fun onTick(millisUntilFinished: Long) {
+                        val secondsLeft = (millisUntilFinished / 1000L) + 1
+                        waitButton.text = "WAIT ${secondsLeft}s..."
+                    }
+                    override fun onFinish() {
+                        waitButton.text = "+$EXTEND_MINUTES MIN (FINE)"
+                        waitButton.isEnabled = true
+                        waitButton.alpha = 1f
+                    }
+                }.start()
+            }
+        }
+    }
+
+    private fun outlinedButton(label: String, onClick: () -> Unit): Button = Button(context).apply {
+        text = label
+        setTextColor(COLOR_PAPER)
+        setBackgroundColor(Color.TRANSPARENT)
+        isAllCaps = true
+        background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.TRANSPARENT)
+            setStroke(dp(3), COLOR_PAPER)
+        }
+        setOnClickListener { onClick() }
     }
 
     private fun loadMemeBitmap(assetRef: String): android.graphics.Bitmap? = try {
