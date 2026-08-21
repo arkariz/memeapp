@@ -31,4 +31,8 @@ interface RoastPayloadDao {
 
     @Query("SELECT * FROM roast_payload WHERE sessionId = :sessionId ORDER BY id DESC LIMIT 1")
     suspend fun latestFor(sessionId: Long): RoastPayloadEntity?
+
+    /** Lifetime roast count — feeds the overlay's "ROAST #N" eyebrow. */
+    @Query("SELECT COUNT(*) FROM roast_payload")
+    suspend fun countAll(): Int
 }

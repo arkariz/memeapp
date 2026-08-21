@@ -233,6 +233,9 @@ class WatcherService : Service() {
                 assetRef = payload.assetRef,
                 eventTs = now,
                 extensionsSoFar = session.extensions,
+                roastNumber = db.roastPayloadDao().countAll(),
+                grantedMin = session.grantedMin ?: sessionRow.grantedMin,
+                takenMin = ((now - sessionRow.openedAt) / 60_000L).toInt(),
                 onDone = {
                     sessionStateMachine.markDone(session.pkg, System.currentTimeMillis())
                     Log.i(TAG, "markDone pkg=${session.pkg}")
