@@ -11,6 +11,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- T-208: GIPHY search + GIF download at grant time (tech plan §7c). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <!-- T-109 app picker: resolve every launchable app via ACTION_MAIN/
          CATEGORY_LAUNCHER, never QUERY_ALL_PACKAGES (PRD P0-1, T-003's
          Play Console usage-access declaration promises this exact scope). -->

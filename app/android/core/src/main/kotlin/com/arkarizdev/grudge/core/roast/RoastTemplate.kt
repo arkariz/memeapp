@@ -9,5 +9,5 @@ data class RoastTemplate(
     val line2: String,
     val degradeLine1: String,
     val degradeLine2: String,
-    val asset: String, // doubles as the mood id for Tenor (tech plan §7c) — not resolved here
+    val asset: String, // doubles as the mood id for GIPHY (tech plan §7c, T-208/T-209) — not resolved here
 )

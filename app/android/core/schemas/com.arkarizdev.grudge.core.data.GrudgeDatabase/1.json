@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "8af438ba8bb85dc43c0ac0629eb6ae9b",
+    "identityHash": "bab3a05f67aa13239e4aa5ea1189731f",
     "entities": [
       {
         "tableName": "heartbeat",
@@ -140,7 +140,7 @@
       },
       {
         "tableName": "roast_payload",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sessionId` INTEGER NOT NULL, `tier` INTEGER NOT NULL, `line1` TEXT NOT NULL, `line2` TEXT NOT NULL, `assetRef` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `gifSource` TEXT NOT NULL, `gifLocalPath` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sessionId` INTEGER NOT NULL, `tier` INTEGER NOT NULL, `line1` TEXT NOT NULL, `line2` TEXT NOT NULL, `assetRef` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `gifSource` TEXT NOT NULL, `gifLocalPath` TEXT, `gifId` TEXT, `gifOnSentUrl` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -193,6 +193,16 @@
           {
             "fieldPath": "gifLocalPath",
             "columnName": "gifLocalPath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "gifId",
+            "columnName": "gifId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "gifOnSentUrl",
+            "columnName": "gifOnSentUrl",
             "affinity": "TEXT"
           }
         ],
@@ -320,7 +330,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8af438ba8bb85dc43c0ac0629eb6ae9b')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bab3a05f67aa13239e4aa5ea1189731f')"
     ]
   }
 }

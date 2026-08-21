@@ -38,9 +38,34 @@ class RoastEngine(context: Context) {
             }
             return result
         }
+
+        /**
+         * T-208/T-209: parses roast_pack.json's `moods` map — search-query
+         * seeds for the live GIPHY fetch, keyed by the same asset id every
+         * template already carries. Skips `_comment` (a plain string entry,
+         * not an object) and ignores the Tenor-specific `contentfilter`
+         * field left in the pack's content — GIPHY's rating filter is a
+         * hardcoded constant in GiphyMemeGifProvider instead, not sourced
+         * from already-reviewed T-004 content.
+         */
+        internal fun parseMoods(json: String): Map<String, List<String>> {
+            val moodsObj = JSONObject(json).optJSONObject("moods") ?: return emptyMap()
+            val result = mutableMapOf<String, List<String>>()
+            for (key in moodsObj.keys()) {
+                val entry = moodsObj.optJSONObject(key) ?: continue
+                val queries = entry.optJSONArray("queries") ?: continue
+                result[key] = (0 until queries.length()).map { queries.getString(it) }
+            }
+            return result
+        }
+
+        private fun readAssetText(context: Context, path: String): String =
+            context.assets.open(path).bufferedReader().use { it.readText() }
     }
 
-    private val templates: List<RoastTemplate> by lazy { loadTemplates(context) }
+    private val packJson: String by lazy { readAssetText(context, "roast_pack_v1/roast_pack.json") }
+    private val templates: List<RoastTemplate> by lazy { loadTemplates() }
+    private val moods: Map<String, List<String>> by lazy { parseMoods(packJson) }
 
     // Per-pkg last-shown template id, so the same joke doesn't repeat
     // back-to-back (tone guide: "no repeat within last N shown" — N=1 here,
@@ -96,11 +121,11 @@ class RoastEngine(context: Context) {
         )
     }
 
-    private fun loadTemplates(context: Context): List<RoastTemplate> {
-        val json = context.assets.open("roast_pack_v1/roast_pack.json")
-            .bufferedReader()
-            .use { it.readText() }
-        val root = JSONObject(json)
+    /** T-208/T-209: search-query seeds for [moodId], or empty if the mood has none / roast_pack.json lacks it. */
+    fun queriesFor(moodId: String): List<String> = moods[moodId].orEmpty()
+
+    private fun loadTemplates(): List<RoastTemplate> {
+        val root = JSONObject(packJson)
         val array = root.getJSONArray("templates")
         val result = mutableListOf<RoastTemplate>()
         for (i in 0 until array.length()) {

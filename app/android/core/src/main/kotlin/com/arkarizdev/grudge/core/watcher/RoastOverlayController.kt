@@ -22,6 +22,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import java.io.File
 
 /**
  * T-106: the roast overlay — the payoff moment. Strictly READ-ONLY: it
@@ -91,6 +92,12 @@ class RoastOverlayController(private val context: Context) {
      * @param takenMin real minutes since the session opened — the "Taken:"
      *   half of the stats line, computed by the caller from the Room row's
      *   openedAt so this stays a read-only view.
+     * @param gifSource "GIPHY" or "BUNDLED" (tech plan §7c, T-208/T-209) —
+     *   whatever roast_payload.gifSource says; read-only here, same as
+     *   everything else this view displays.
+     * @param gifLocalPath set only when gifSource == "GIPHY". The file may
+     *   no longer exist (already GC'd) — memeSection() falls through to
+     *   the bundled chain rather than trusting this blindly.
      */
     fun show(
         pkg: String,
@@ -102,13 +109,15 @@ class RoastOverlayController(private val context: Context) {
         roastNumber: Int,
         grantedMin: Int,
         takenMin: Int,
+        gifSource: String,
+        gifLocalPath: String?,
         onDone: () -> Unit,
         onExtend: (additionalMinutes: Int) -> Unit,
     ) {
         if (shownForPkg == pkg) return
         shownForPkg = pkg
         mainHandler.post {
-            showOnMainThread(pkg, line1, line2, assetRef, eventTs, extensionsSoFar, roastNumber, grantedMin, takenMin, onDone, onExtend)
+            showOnMainThread(pkg, line1, line2, assetRef, eventTs, extensionsSoFar, roastNumber, grantedMin, takenMin, gifSource, gifLocalPath, onDone, onExtend)
         }
     }
 
@@ -122,12 +131,14 @@ class RoastOverlayController(private val context: Context) {
         roastNumber: Int,
         grantedMin: Int,
         takenMin: Int,
+        gifSource: String,
+        gifLocalPath: String?,
         onDone: () -> Unit,
         onExtend: (Int) -> Unit,
     ) {
         removeCurrentViewOnMainThread() // NOT dismissViewOnMainThread() — must not clear shownForPkg mid-rebuild
 
-        val root = buildRoastView(pkg, line1, line2, assetRef, extensionsSoFar, roastNumber, grantedMin, takenMin, onDone, onExtend)
+        val root = buildRoastView(pkg, line1, line2, assetRef, extensionsSoFar, roastNumber, grantedMin, takenMin, gifSource, gifLocalPath, onDone, onExtend)
 
         windowManager.addView(root, roastLayoutParams())
         overlayView = root
@@ -156,6 +167,8 @@ class RoastOverlayController(private val context: Context) {
         roastNumber: Int,
         grantedMin: Int,
         takenMin: Int,
+        gifSource: String,
+        gifLocalPath: String?,
         onDone: () -> Unit,
         onExtend: (Int) -> Unit,
     ): View {
@@ -169,7 +182,13 @@ class RoastOverlayController(private val context: Context) {
 
         root.addView(View(context), LinearLayout.LayoutParams(0, 0, 0.3f))
 
-        memeSection("roast_memes/$assetRef.gif", fallbackAssetRef = assetRef)?.let { root.addView(it) }
+        val memeBox = memeSection(
+            "roast_memes/$assetRef.gif",
+            fallbackAssetRef = assetRef,
+            cachedGifPath = gifLocalPath.takeIf { gifSource == "GIPHY" },
+        )
+        memeBox?.let { root.addView(it.view) }
+        if (memeBox?.fromCachedGif == true) root.addView(giphyAttributionRow())
 
         root.addView(TextView(context).apply {
             text = line1
@@ -285,7 +304,7 @@ class RoastOverlayController(private val context: Context) {
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = dp(6); bottomMargin = dp(16) })
 
-        memeSection("roast_memes/negotiation.gif", fallbackAssetRef = null)?.let { content.addView(it) }
+        memeSection("roast_memes/negotiation.gif", fallbackAssetRef = null)?.let { content.addView(it.view) }
 
         content.addView(View(context), LinearLayout.LayoutParams(0, dp(24)))
 
@@ -356,7 +375,7 @@ class RoastOverlayController(private val context: Context) {
             setPadding(0, 0, 0, dp(16))
         })
 
-        memeSection("roast_memes/waiting.gif", fallbackAssetRef = null)?.let { root.addView(it) }
+        memeSection("roast_memes/waiting.gif", fallbackAssetRef = null)?.let { root.addView(it.view) }
 
         root.addView(View(context), LinearLayout.LayoutParams(0, 0, 1f))
 
@@ -451,16 +470,25 @@ class RoastOverlayController(private val context: Context) {
         setTypeface(typeface, android.graphics.Typeface.BOLD)
     }
 
+    private data class MemeBoxResult(val view: View, val fromCachedGif: Boolean)
+
     /**
-     * The meme box: a white-framed image section. Tries the user-sourced
-     * animated GIF first ([gifAssetPath], ImageDecoder animates multi-frame
-     * sources natively on API 28+; minSdk is 29). Falls back to the bundled
-     * roast_pack_v1 mascot WebP when [fallbackAssetRef] is set; returns null
-     * (section hidden entirely) when neither exists — a missing negotiation/
-     * waiting meme must not break the unlock flow.
+     * The meme box: a white-framed image section. Fallback chain, first
+     * match wins:
+     *   0. [cachedGifPath] — a live-fetched GIPHY GIF cached to filesDir at
+     *      grant time (T-208/T-209). May be null (no key, fetch failed, or
+     *      the file's since been GC'd) — never assumed to exist.
+     *   1. [gifAssetPath] — the user-sourced bundled animated GIF
+     *      (ImageDecoder animates multi-frame sources natively, API 28+;
+     *      minSdk is 29).
+     *   2. [fallbackAssetRef] — the bundled roast_pack_v1 mascot WebP.
+     *   3. null (section hidden entirely) — a missing meme, at any tier,
+     *      must never break the unlock flow.
      */
-    private fun memeSection(gifAssetPath: String, fallbackAssetRef: String?): View? {
-        val drawable = loadDrawable(gifAssetPath)
+    private fun memeSection(gifAssetPath: String, fallbackAssetRef: String?, cachedGifPath: String? = null): MemeBoxResult? {
+        val cachedDrawable = cachedGifPath?.let { loadDrawableFromFile(it) }
+        val drawable = cachedDrawable
+            ?: loadDrawable(gifAssetPath)
             ?: fallbackAssetRef?.let { ref ->
                 try {
                     context.assets.open("roast_pack_v1/$ref.webp").use {
@@ -473,7 +501,7 @@ class RoastOverlayController(private val context: Context) {
             }
             ?: return null
 
-        return LinearLayout(context).apply {
+        val frame = LinearLayout(context).apply {
             setBackgroundColor(Color.WHITE)
             setPadding(dp(3), dp(3), dp(3), dp(3))
             addView(
@@ -484,14 +512,14 @@ class RoastOverlayController(private val context: Context) {
                 },
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(220)),
             )
-        }.let { frame ->
-            LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                addView(frame, LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { bottomMargin = dp(20) })
-            }
         }
+        val view = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(frame, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(20) })
+        }
+        return MemeBoxResult(view, fromCachedGif = drawable === cachedDrawable)
     }
 
     private fun loadDrawable(assetPath: String): Drawable? = try {
@@ -499,6 +527,43 @@ class RoastOverlayController(private val context: Context) {
         ImageDecoder.decodeDrawable(source)
     } catch (_: Exception) {
         null
+    }
+
+    /** T-208/T-209: same null-on-any-failure shape as [loadDrawable] — a missing/deleted cache file must fall through silently, not crash. */
+    private fun loadDrawableFromFile(path: String): Drawable? = try {
+        val file = File(path)
+        if (!file.exists()) null else ImageDecoder.decodeDrawable(ImageDecoder.createSource(file))
+    } catch (_: Exception) {
+        null
+    }
+
+    /**
+     * T-208: GIPHY's ToS requires "Powered by GIPHY" text + logo wherever
+     * fetched content shows. Shown only when the meme box actually
+     * rendered from a live-fetched GIF (memeSection's fromCachedGif flag),
+     * not just because roast_payload.gifSource says GIPHY — a since-GC'd
+     * cache file falls through to the bundled mascot, and attribution
+     * must track what's truly on screen. Logo is optional/user-sourced
+     * (see assets/giphy/README.md) — text always renders regardless.
+     */
+    private fun giphyAttributionRow(): View {
+        val row = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, dp(12))
+        }
+        loadDrawable("giphy/attribution_badge.png")?.let { logo ->
+            row.addView(
+                ImageView(context).apply { setImageDrawable(logo) },
+                LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginEnd = dp(6) },
+            )
+        }
+        row.addView(TextView(context).apply {
+            text = "Powered by GIPHY"
+            setTextColor(COLOR_GRAY)
+            textSize = 10f
+        })
+        return row
     }
 
     fun dismissIfShowing(pkg: String) {

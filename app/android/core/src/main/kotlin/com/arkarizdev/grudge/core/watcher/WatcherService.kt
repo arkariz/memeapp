@@ -11,12 +11,17 @@ import android.content.Intent
 import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
+import com.arkarizdev.grudge.core.BuildConfig
 import com.arkarizdev.grudge.core.data.GrudgeDatabase
 import com.arkarizdev.grudge.core.data.RoastPayloadEntity
 import com.arkarizdev.grudge.core.data.SessionDao
 import com.arkarizdev.grudge.core.data.SessionEntity
 import com.arkarizdev.grudge.core.data.StreakEntity
 import com.arkarizdev.grudge.core.data.WatchedAppEntity
+import com.arkarizdev.grudge.core.gif.GifCache
+import com.arkarizdev.grudge.core.gif.GifFetchGateway
+import com.arkarizdev.grudge.core.gif.GiphyMemeGifProvider
+import com.arkarizdev.grudge.core.gif.MemeGifProvider
 import com.arkarizdev.grudge.core.roast.RoastEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +30,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import java.io.File
 import java.time.ZoneId
 
 /**
@@ -71,6 +78,8 @@ class WatcherService : Service() {
     private lateinit var intentOverlay: IntentOverlayController
     private lateinit var roastOverlay: RoastOverlayController
     private lateinit var roastEngine: RoastEngine
+    private lateinit var gifCache: GifCache
+    private lateinit var gifGateway: GifFetchGateway
     private val sessionStateMachine = SessionStateMachine()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var lastQueryTs = 0L
@@ -88,6 +97,18 @@ class WatcherService : Service() {
         intentOverlay = IntentOverlayController(this)
         roastOverlay = RoastOverlayController(this)
         roastEngine = RoastEngine(this)
+
+        // T-208: a blank key is a fully supported state, not a degraded
+        // one — provider stays null, GifFetchGateway.fetch() short-circuits
+        // to Unavailable without attempting any network call.
+        val giphyApiKey = BuildConfig.GIPHY_API_KEY
+        val gifProvider: MemeGifProvider? = if (giphyApiKey.isNotBlank()) {
+            GiphyMemeGifProvider(giphyApiKey, OkHttpClient())
+        } else {
+            null
+        }
+        gifCache = GifCache(File(filesDir, "gif_cache"))
+        gifGateway = GifFetchGateway(gifProvider, gifCache)
 
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
@@ -110,6 +131,7 @@ class WatcherService : Service() {
                 seedWatchedAppsIfEmpty()
                 watchedPkgs = db.watchedAppDao().enabled().map { it.pkg }.toSet()
                 reloadActiveSessions()
+                gifCache.sweepOrphans(db.sessionDao().findAllActive().map { it.id }.toSet())
                 Log.i(TAG, "watcher started pollMs=$pollMs watched=$watchedPkgs")
             } catch (t: Throwable) {
                 Log.e(TAG, "startup sequence failed", t)
@@ -238,6 +260,8 @@ class WatcherService : Service() {
                 roastNumber = db.roastPayloadDao().countAll(),
                 grantedMin = session.grantedMin ?: sessionRow.grantedMin,
                 takenMin = ((now - sessionRow.openedAt) / 60_000L).toInt(),
+                gifSource = payload.gifSource,
+                gifLocalPath = payload.gifLocalPath,
                 onDone = {
                     sessionStateMachine.markDone(session.pkg, System.currentTimeMillis())
                     Log.i(TAG, "markDone pkg=${session.pkg}")
@@ -273,6 +297,19 @@ class WatcherService : Service() {
                     }
                 },
             )
+
+            // T-208: "used" pingback fires here — actual display time, not
+            // fetch time (see RoastPayloadEntity's doc comment for why).
+            val onSentUrl = payload.gifOnSentUrl
+            if (payload.gifSource == "GIPHY" && onSentUrl != null) {
+                serviceScope.launch {
+                    try {
+                        gifGateway.registerUsed(onSentUrl)
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "onSent pingback failed", t)
+                    }
+                }
+            }
         }
     }
 
@@ -358,6 +395,20 @@ class WatcherService : Service() {
             Log.w(TAG, "precomputeRoast: no template matched for pkg=$pkg")
             return
         }
+
+        // T-208/T-209: budgeted (~3s) live GIF fetch, same "never block the
+        // roast" discipline as the rest of this function — any failure
+        // (no key, no network, timeout, download error) silently falls
+        // back to BUNDLED, never throws out of precomputeRoast.
+        val gifFetch = try {
+            val queries = roastEngine.queriesFor(result.asset)
+            if (queries.isEmpty()) null else gifGateway.fetch(result.asset, queries, sessionRow.id)
+        } catch (t: Throwable) {
+            Log.w(TAG, "gif fetch threw for pkg=$pkg asset=${result.asset}", t)
+            null
+        }
+        val fetched = gifFetch as? GifFetchGateway.FetchResult.Fetched
+
         db.roastPayloadDao().insert(
             RoastPayloadEntity(
                 sessionId = sessionRow.id,
@@ -366,11 +417,13 @@ class WatcherService : Service() {
                 line2 = result.line2,
                 assetRef = result.asset,
                 createdAt = System.currentTimeMillis(),
-                gifSource = "BUNDLED", // T-208/T-209 wire the live Tenor path; bundled is always correct as-of T-105
-                gifLocalPath = null,
+                gifSource = if (fetched != null) "GIPHY" else "BUNDLED",
+                gifLocalPath = fetched?.localPath,
+                gifId = fetched?.gifId,
+                gifOnSentUrl = fetched?.onSentUrl,
             )
         )
-        Log.i(TAG, "precomputeRoast pkg=$pkg templateId=${result.templateId} tier=${result.tier}")
+        Log.i(TAG, "precomputeRoast pkg=$pkg templateId=${result.templateId} tier=${result.tier} gifSource=${if (fetched != null) "GIPHY" else "BUNDLED"}")
     }
 
     /**
@@ -390,6 +443,10 @@ class WatcherService : Service() {
             val existing = dao.findActive(finished.pkg) ?: continue
             dao.markEnded(existing.id, finished.endedAt, finished.outcome.name, finished.overageS, finished.extensions)
             Log.i(TAG, "session ended pkg=${finished.pkg} outcome=${finished.outcome} overageS=${finished.overageS}")
+            // T-208/T-209: "cache for the session's lifetime" (tech plan
+            // §7c) — the roast overlay never replays history, so a
+            // finalized session's cached GIF(s) are no longer reachable.
+            gifCache.deleteForSession(existing.id)
         }
 
         evaluateStreak(now)

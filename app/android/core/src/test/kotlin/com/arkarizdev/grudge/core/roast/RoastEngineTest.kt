@@ -40,4 +40,36 @@ class RoastEngineTest {
     fun `fill leaves text unchanged when no tokens present`() {
         assertEquals("STILL SCROLLING.", RoastEngine.fill("STILL SCROLLING.", emptyMap()))
     }
+
+    @Test
+    fun `parseMoods reads the queries array for a known mood`() {
+        val json = """
+            {"moods": {"side_eye": {"queries": ["side eye", "suspicious look"], "contentfilter": "high"}}}
+        """.trimIndent()
+        assertEquals(listOf("side eye", "suspicious look"), RoastEngine.parseMoods(json)["side_eye"])
+    }
+
+    @Test
+    fun `parseMoods ignores the _comment string entry and the contentfilter field`() {
+        val json = """
+            {"moods": {
+                "_comment": "search query seeds for the live GIPHY fetch",
+                "stonks": {"queries": ["stonks"], "contentfilter": "high"}
+            }}
+        """.trimIndent()
+        val moods = RoastEngine.parseMoods(json)
+        assertEquals(setOf("stonks"), moods.keys)
+        assertEquals(listOf("stonks"), moods["stonks"])
+    }
+
+    @Test
+    fun `parseMoods returns empty map when moods is missing entirely`() {
+        assertEquals(emptyMap<String, List<String>>(), RoastEngine.parseMoods("""{"templates": []}"""))
+    }
+
+    @Test
+    fun `parseMoods skips a mood entry with no queries array`() {
+        val json = """{"moods": {"waiting": {"contentfilter": "high"}}}"""
+        assertEquals(emptyMap<String, List<String>>(), RoastEngine.parseMoods(json))
+    }
 }
