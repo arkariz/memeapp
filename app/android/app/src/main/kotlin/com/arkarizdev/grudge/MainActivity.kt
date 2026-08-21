@@ -83,6 +83,32 @@ private class WatcherApiHandler(private val activity: MainActivity) : WatcherHos
         }
     }
 
+    override fun getPendingCard(callback: (Result<CardDto?>) -> Unit) {
+        scope.launch {
+            val card = WatcherCore.getPendingCard(activity)
+            callback(
+                Result.success(
+                    card?.let {
+                        CardDto(
+                            kind = it.kind,
+                            pkg = it.pkg,
+                            appLabel = it.appLabel,
+                            grantedMin = it.grantedMin.toLong(),
+                            takenMin = it.takenMin.toLong(),
+                            streakCount = it.streakCount.toLong(),
+                            dateIso = it.dateIso,
+                            referenceId = it.referenceId,
+                        )
+                    }
+                )
+            )
+        }
+    }
+
+    override fun acknowledgeCard(kind: String, referenceId: Long) {
+        WatcherCore.acknowledgeCard(activity, kind, referenceId)
+    }
+
     override fun startWatcher() {
         WatcherCore.startWatcher(activity)
     }

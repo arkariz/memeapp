@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/watcher_repository.dart';
 import '../pigeon/watcher_api.g.dart';
+import '../success/card_screen.dart';
 import '../theme/grudge_theme.dart';
 import 'scaffold_check_page.dart';
 import 'watch_down_screen.dart';
@@ -28,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _refresh();
+    _checkForPendingCard();
   }
 
   @override
@@ -40,13 +42,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Same T-110 reasoning as ScaffoldCheckPage: catch a watcher that died
     // (or a new day's streak/usage numbers) on every resume, not just once.
-    if (state == AppLifecycleState.resumed) _refresh();
+    if (state == AppLifecycleState.resumed) {
+      _refresh();
+      _checkForPendingCard();
+    }
   }
 
   Future<void> _refresh() async {
     final snapshot = await widget.repo.getHomeSnapshot();
     if (!mounted) return;
     setState(() => _snapshot = snapshot);
+  }
+
+  /// T-202: a beaten estimate or a new streak-best surfaces here, the
+  /// first Home open after it happened — the native side has no UI of its
+  /// own to show it from (this is a success moment, no overlay for it by
+  /// design). Acknowledged unconditionally on dismissal, shared or not, so
+  /// it never re-prompts for the same event.
+  Future<void> _checkForPendingCard() async {
+    final card = await widget.repo.getPendingCard();
+    if (card == null || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => CardScreen(card: card), fullscreenDialog: true),
+    );
+    await widget.repo.acknowledgeCard(card.kind, card.referenceId);
+    if (!mounted) return;
+    await _refresh();
   }
 
   Future<void> _openWatchDownScreen() async {

@@ -61,6 +61,10 @@ interface SessionDao {
     )
     suspend fun hasNonBeatenSessionBetween(start: Long, end: Long): Boolean
 
+    /** T-202 share cards: the most recent BEATEN session, a candidate for a new card. */
+    @Query("SELECT * FROM session WHERE outcome = 'BEATEN' ORDER BY endedAt DESC LIMIT 1")
+    suspend fun latestBeaten(): SessionEntity?
+
     @Insert
     suspend fun insert(session: SessionEntity): Long
 

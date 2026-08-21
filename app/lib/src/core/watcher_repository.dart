@@ -14,6 +14,8 @@ class WatcherRepository {
 
   Future<WatcherStatusDto> getStatus() => _api.getStatus();
   Future<HomeSnapshotDto> getHomeSnapshot() => _api.getHomeSnapshot();
+  Future<CardDto?> getPendingCard() => _api.getPendingCard();
+  Future<void> acknowledgeCard(String kind, int referenceId) => _api.acknowledgeCard(kind, referenceId);
   Future<void> startWatcher() => _api.startWatcher();
   Future<void> debugGrant(String pkg, int minutes, String? intentText) => _api.debugGrant(pkg, minutes, intentText);
 

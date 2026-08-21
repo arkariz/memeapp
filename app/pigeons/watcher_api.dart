@@ -95,6 +95,34 @@ class HomeSnapshotDto {
   List<AppUsageDto> apps;
 }
 
+/// T-202: one success-side share-card candidate. [kind] is "BEATEN" or
+/// "STREAK_MILESTONE" (see WatcherCore.CardSnapshot's doc comment for why
+/// this is a plain string, not a Pigeon enum). [referenceId] is whatever
+/// [WatcherHostApi.acknowledgeCard] needs to mark this exact event as
+/// already celebrated — a session id for BEATEN, the streak count itself
+/// for STREAK_MILESTONE.
+class CardDto {
+  CardDto({
+    required this.kind,
+    required this.pkg,
+    required this.appLabel,
+    required this.grantedMin,
+    required this.takenMin,
+    required this.streakCount,
+    required this.dateIso,
+    required this.referenceId,
+  });
+
+  String kind;
+  String pkg;
+  String appLabel;
+  int grantedMin;
+  int takenMin;
+  int streakCount;
+  String dateIso;
+  int referenceId;
+}
+
 /// Dart -> Kotlin: queries/commands the app module implements against
 /// WatcherCore. startWatcher/debugGrant are dev/test affordances (T-102/
 /// T-103) — the real product starts the service from onboarding (T-109)
@@ -110,6 +138,16 @@ abstract class WatcherHostApi {
   /// T-201: the home screen's one data call — streak + per-app usage bars.
   @async
   HomeSnapshotDto getHomeSnapshot();
+
+  /// T-202: the next success-side card to show, or null if nothing new
+  /// beat its estimate / hit a streak milestone since the last one shown.
+  @async
+  CardDto? getPendingCard();
+
+  /// T-202: marks [kind]/[referenceId] as already celebrated so
+  /// getPendingCard never returns it again. Called once the card screen
+  /// is dismissed, shared or not.
+  void acknowledgeCard(String kind, int referenceId);
 
   void startWatcher();
 

@@ -524,6 +524,80 @@ data class HomeSnapshotDto (
     return "HomeSnapshotDto(isRunning=$isRunning, hasUsageAccess=$hasUsageAccess, hasOverlayPermission=$hasOverlayPermission, watcherStartedAtMs=$watcherStartedAtMs, streakCurrent=$streakCurrent, streakBest=$streakBest, apps=$apps)"
   }
 }
+
+/**
+ * T-202: one success-side share-card candidate. [kind] is "BEATEN" or
+ * "STREAK_MILESTONE" (see WatcherCore.CardSnapshot's doc comment for why
+ * this is a plain string, not a Pigeon enum). [referenceId] is whatever
+ * [WatcherHostApi.acknowledgeCard] needs to mark this exact event as
+ * already celebrated — a session id for BEATEN, the streak count itself
+ * for STREAK_MILESTONE.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class CardDto (
+  val kind: String,
+  val pkg: String,
+  val appLabel: String,
+  val grantedMin: Long,
+  val takenMin: Long,
+  val streakCount: Long,
+  val dateIso: String,
+  val referenceId: Long
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): CardDto {
+      val kind = pigeonVar_list[0] as String
+      val pkg = pigeonVar_list[1] as String
+      val appLabel = pigeonVar_list[2] as String
+      val grantedMin = pigeonVar_list[3] as Long
+      val takenMin = pigeonVar_list[4] as Long
+      val streakCount = pigeonVar_list[5] as Long
+      val dateIso = pigeonVar_list[6] as String
+      val referenceId = pigeonVar_list[7] as Long
+      return CardDto(kind, pkg, appLabel, grantedMin, takenMin, streakCount, dateIso, referenceId)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      kind,
+      pkg,
+      appLabel,
+      grantedMin,
+      takenMin,
+      streakCount,
+      dateIso,
+      referenceId,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as CardDto
+    return WatcherApiPigeonUtils.deepEquals(this.kind, other.kind) && WatcherApiPigeonUtils.deepEquals(this.pkg, other.pkg) && WatcherApiPigeonUtils.deepEquals(this.appLabel, other.appLabel) && WatcherApiPigeonUtils.deepEquals(this.grantedMin, other.grantedMin) && WatcherApiPigeonUtils.deepEquals(this.takenMin, other.takenMin) && WatcherApiPigeonUtils.deepEquals(this.streakCount, other.streakCount) && WatcherApiPigeonUtils.deepEquals(this.dateIso, other.dateIso) && WatcherApiPigeonUtils.deepEquals(this.referenceId, other.referenceId)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.kind)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.pkg)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.appLabel)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.grantedMin)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.takenMin)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.streakCount)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.dateIso)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.referenceId)
+    return result
+  }
+  override fun toString(): String {
+    return "CardDto(kind=$kind, pkg=$pkg, appLabel=$appLabel, grantedMin=$grantedMin, takenMin=$takenMin, streakCount=$streakCount, dateIso=$dateIso, referenceId=$referenceId)"
+  }
+}
 private open class WatcherApiPigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
@@ -557,6 +631,11 @@ private open class WatcherApiPigeonCodec : StandardMessageCodec() {
           HomeSnapshotDto.fromList(it)
         }
       }
+      135.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          CardDto.fromList(it)
+        }
+      }
       else -> super.readValueOfType(type, buffer)
     }
   }
@@ -586,6 +665,10 @@ private open class WatcherApiPigeonCodec : StandardMessageCodec() {
         stream.write(134)
         writeValue(stream, value.toList())
       }
+      is CardDto -> {
+        stream.write(135)
+        writeValue(stream, value.toList())
+      }
       else -> super.writeValue(stream, value)
     }
   }
@@ -609,6 +692,17 @@ interface WatcherHostApi {
   fun getStatus(callback: (Result<WatcherStatusDto>) -> Unit)
   /** T-201: the home screen's one data call — streak + per-app usage bars. */
   fun getHomeSnapshot(callback: (Result<HomeSnapshotDto>) -> Unit)
+  /**
+   * T-202: the next success-side card to show, or null if nothing new
+   * beat its estimate / hit a streak milestone since the last one shown.
+   */
+  fun getPendingCard(callback: (Result<CardDto?>) -> Unit)
+  /**
+   * T-202: marks [kind]/[referenceId] as already celebrated so
+   * getPendingCard never returns it again. Called once the card screen
+   * is dismissed, shared or not.
+   */
+  fun acknowledgeCard(kind: String, referenceId: Long)
   fun startWatcher()
   /**
    * Dev/test-only: manually trigger a grant to verify "grant-reload-on-
@@ -695,6 +789,43 @@ interface WatcherHostApi {
                 reply.reply(WatcherApiPigeonUtils.wrapResult(data))
               }
             }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.getPendingCard$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getPendingCard{ result: Result<CardDto?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(WatcherApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(WatcherApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.acknowledgeCard$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val kindArg = args[0] as String
+            val referenceIdArg = args[1] as Long
+            val wrapped: List<Any?> = try {
+              api.acknowledgeCard(kindArg, referenceIdArg)
+              listOf(null)
+            } catch (exception: Throwable) {
+              WatcherApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)

@@ -485,6 +485,92 @@ class HomeSnapshotDto {
   }
 }
 
+/// T-202: one success-side share-card candidate. [kind] is "BEATEN" or
+/// "STREAK_MILESTONE" (see WatcherCore.CardSnapshot's doc comment for why
+/// this is a plain string, not a Pigeon enum). [referenceId] is whatever
+/// [WatcherHostApi.acknowledgeCard] needs to mark this exact event as
+/// already celebrated — a session id for BEATEN, the streak count itself
+/// for STREAK_MILESTONE.
+class CardDto {
+  CardDto({
+    required this.kind,
+    required this.pkg,
+    required this.appLabel,
+    required this.grantedMin,
+    required this.takenMin,
+    required this.streakCount,
+    required this.dateIso,
+    required this.referenceId,
+  });
+
+  String kind;
+
+  String pkg;
+
+  String appLabel;
+
+  int grantedMin;
+
+  int takenMin;
+
+  int streakCount;
+
+  String dateIso;
+
+  int referenceId;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      kind,
+      pkg,
+      appLabel,
+      grantedMin,
+      takenMin,
+      streakCount,
+      dateIso,
+      referenceId,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static CardDto decode(Object result) {
+    result as List<Object?>;
+    return CardDto(
+      kind: result[0]! as String,
+      pkg: result[1]! as String,
+      appLabel: result[2]! as String,
+      grantedMin: result[3]! as int,
+      takenMin: result[4]! as int,
+      streakCount: result[5]! as int,
+      dateIso: result[6]! as String,
+      referenceId: result[7]! as int,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! CardDto || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(kind, other.kind) && _deepEquals(pkg, other.pkg) && _deepEquals(appLabel, other.appLabel) && _deepEquals(grantedMin, other.grantedMin) && _deepEquals(takenMin, other.takenMin) && _deepEquals(streakCount, other.streakCount) && _deepEquals(dateIso, other.dateIso) && _deepEquals(referenceId, other.referenceId);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'CardDto(kind: $kind, pkg: $pkg, appLabel: $appLabel, grantedMin: $grantedMin, takenMin: $takenMin, streakCount: $streakCount, dateIso: $dateIso, referenceId: $referenceId)';
+  }
+}
+
 
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
@@ -511,6 +597,9 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is HomeSnapshotDto) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
+    }    else if (value is CardDto) {
+      buffer.putUint8(135);
+      writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
     }
@@ -531,6 +620,8 @@ class _PigeonCodec extends StandardMessageCodec {
         return AppUsageDto.decode(readValue(buffer)!);
       case 134:
         return HomeSnapshotDto.decode(readValue(buffer)!);
+      case 135:
+        return CardDto.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -594,6 +685,48 @@ class WatcherHostApi {
     )
     ;
     return pigeonVar_replyValue! as HomeSnapshotDto;
+  }
+
+  /// T-202: the next success-side card to show, or null if nothing new
+  /// beat its estimate / hit a streak milestone since the last one shown.
+  Future<CardDto?> getPendingCard() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.getPendingCard$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+    return pigeonVar_replyValue as CardDto?;
+  }
+
+  /// T-202: marks [kind]/[referenceId] as already celebrated so
+  /// getPendingCard never returns it again. Called once the card screen
+  /// is dismissed, shared or not.
+  Future<void> acknowledgeCard(String kind, int referenceId) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.acknowledgeCard$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[kind, referenceId]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   Future<void> startWatcher() async {

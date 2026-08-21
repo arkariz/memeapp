@@ -38,6 +38,26 @@ data class HomeSnapshot(
 )
 
 /**
+ * T-202: one success-side share-card candidate. [kind] is "BEATEN" or
+ * "STREAK_MILESTONE" — kept a plain string, matching how SessionOutcome is
+ * already passed across the Kotlin/Room boundary elsewhere in this file
+ * (`finished.outcome.name`), rather than introducing a Pigeon enum for the
+ * first time. [referenceId] is the session id for BEATEN or the streak
+ * count for STREAK_MILESTONE — whichever [acknowledgeCard] needs to mark
+ * this specific event as already celebrated.
+ */
+data class CardSnapshot(
+    val kind: String,
+    val pkg: String,
+    val appLabel: String,
+    val grantedMin: Int,
+    val takenMin: Int,
+    val streakCount: Int,
+    val dateIso: String,
+    val referenceId: Long,
+)
+
+/**
  * Entry point the app module's Pigeon handler delegates to. Kept as a plain
  * object with no Flutter/Pigeon imports so the core module never depends on
  * the Flutter engine (tech plan §2 — core must run with the engine dead).
@@ -218,6 +238,58 @@ object WatcherCore {
             if (end > start) totalMs += (end - start)
         }
         return (totalMs / 60_000L).toInt()
+    }
+
+    /**
+     * T-202: the next success-side card to show, if any — checked BEATEN
+     * session first, then a streak milestone (current == best, both > 0).
+     * Only one is returned per call even if both are pending; the other
+     * stays pending and surfaces on the next call, since acknowledging one
+     * doesn't touch the other's tracking pointer. PRD P0-5: "card
+     * generation is a success-side event only" — OVERAGE/EXTENDED
+     * sessions are never candidates here.
+     */
+    suspend fun getPendingCard(context: Context): CardSnapshot? {
+        val db = GrudgeDatabase.get(context)
+
+        val beaten = db.sessionDao().latestBeaten()
+        val beatenEndedAt = beaten?.endedAt
+        if (beaten != null && beatenEndedAt != null && beaten.id > CardPrefs.lastShownSessionId(context)) {
+            return CardSnapshot(
+                kind = "BEATEN",
+                pkg = beaten.pkg,
+                appLabel = resolveAppLabel(context, beaten.pkg),
+                grantedMin = beaten.grantedMin,
+                takenMin = ((beatenEndedAt - beaten.openedAt) / 60_000L).toInt(),
+                streakCount = db.streakDao().get()?.current ?: 0,
+                dateIso = DayBoundary.isoDate(beatenEndedAt),
+                referenceId = beaten.id,
+            )
+        }
+
+        val streak = db.streakDao().get()
+        if (streak != null && streak.best > 0 && streak.current == streak.best && streak.best > CardPrefs.lastCelebratedStreak(context)) {
+            return CardSnapshot(
+                kind = "STREAK_MILESTONE",
+                pkg = "",
+                appLabel = "",
+                grantedMin = 0,
+                takenMin = 0,
+                streakCount = streak.current,
+                dateIso = DayBoundary.isoDate(System.currentTimeMillis()),
+                referenceId = streak.current.toLong(),
+            )
+        }
+
+        return null
+    }
+
+    /** Advances the relevant CardPrefs pointer so this exact event never generates a card again. */
+    fun acknowledgeCard(context: Context, kind: String, referenceId: Long) {
+        when (kind) {
+            "BEATEN" -> CardPrefs.setLastShownSessionId(context, referenceId)
+            "STREAK_MILESTONE" -> CardPrefs.setLastCelebratedStreak(context, referenceId.toInt())
+        }
     }
 
     private fun hasUsageAccess(context: Context): Boolean {
