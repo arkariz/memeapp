@@ -25,6 +25,35 @@ class GiphyMemeGifProvider(private val apiKey: String, private val client: OkHtt
     companion object {
         private const val TAG = "GrudgeGifFetch"
         private const val SEARCH_URL = "https://api.giphy.com/v1/gifs/search"
+
+        // A given mood's query text is deterministic (roast_pack.json's
+        // fixed list), and GIPHY's search endpoint isn't randomized — with
+        // limit=1 it returns the same top hit essentially every time a mood
+        // recurs. Asking for more results and picking randomly among them
+        // (still all rating=g) is what actually makes repeat moods look
+        // different, on top of RoastEngine's own mood cooldown.
+        private const val SEARCH_RESULT_LIMIT = "10"
+
+        /**
+         * Parses GIPHY's `data[]` array into usable results, skipping any
+         * entry missing a renditon URL rather than failing the whole parse.
+         * Pulled out as a pure function so this JSON-shape logic is
+         * unit-testable without a real HTTP call.
+         */
+        internal fun parseSearchResults(body: String): List<MemeGifResult> {
+            val data = JSONObject(body).optJSONArray("data") ?: return emptyList()
+            val results = mutableListOf<MemeGifResult>()
+            for (i in 0 until data.length()) {
+                val gif = data.optJSONObject(i) ?: continue
+                val images = gif.optJSONObject("images") ?: continue
+                val rendition = images.optJSONObject("fixed_height") ?: images.optJSONObject("downsized")
+                val downloadUrl = rendition?.optString("url")?.takeIf { it.isNotBlank() } ?: continue
+                val id = gif.optString("id")?.takeIf { it.isNotBlank() } ?: continue
+                val onSentUrl = gif.optJSONObject("analytics")?.optJSONObject("onsent")?.optString("url")?.takeIf { it.isNotBlank() }
+                results.add(MemeGifResult(id = id, downloadUrl = downloadUrl, onSentUrl = onSentUrl))
+            }
+            return results
+        }
     }
 
     override suspend fun search(queries: List<String>): MemeGifResult? {
@@ -39,20 +68,13 @@ class GiphyMemeGifProvider(private val apiKey: String, private val client: OkHtt
         val url = SEARCH_URL.toHttpUrl().newBuilder()
             .addQueryParameter("api_key", apiKey)
             .addQueryParameter("q", query)
-            .addQueryParameter("limit", "1")
+            .addQueryParameter("limit", SEARCH_RESULT_LIMIT)
             .addQueryParameter("rating", "g")
             .addQueryParameter("lang", "en")
             .build()
         return try {
             val body = execute(Request.Builder().url(url).build()) ?: return null
-            val data = JSONObject(body).optJSONArray("data") ?: return null
-            if (data.length() == 0) return null
-            val gif = data.getJSONObject(0)
-            val images = gif.optJSONObject("images") ?: return null
-            val rendition = images.optJSONObject("fixed_height") ?: images.optJSONObject("downsized")
-            val downloadUrl = rendition?.optString("url")?.takeIf { it.isNotBlank() } ?: return null
-            val onSentUrl = gif.optJSONObject("analytics")?.optJSONObject("onsent")?.optString("url")?.takeIf { it.isNotBlank() }
-            MemeGifResult(id = gif.getString("id"), downloadUrl = downloadUrl, onSentUrl = onSentUrl)
+            parseSearchResults(body).randomOrNull()
         } catch (t: CancellationException) {
             throw t // never swallow — this is what lets GifFetchGateway's withTimeoutOrNull see the timeout
         } catch (t: Exception) {

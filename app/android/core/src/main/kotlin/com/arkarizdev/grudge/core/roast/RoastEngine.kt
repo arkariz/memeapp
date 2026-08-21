@@ -24,6 +24,9 @@ import org.json.JSONObject
  */
 class RoastEngine(context: Context) {
     companion object {
+        /** How many of the most recent moods to avoid repeating, per pkg. */
+        internal const val MOOD_COOLDOWN_SIZE = 2
+
         /** Escalation shape per the tone guide: tier 1 first roast, 2 after one extension, 3 after that. */
         internal fun tierFor(extensionsSoFar: Int): Int = when {
             extensionsSoFar <= 0 -> 1
@@ -37,6 +40,25 @@ class RoastEngine(context: Context) {
                 result = result.replace("{$key}", value)
             }
             return result
+        }
+
+        /**
+         * The eligible pool for this pick, filtered progressively: first
+         * try candidates that avoid BOTH the literal last-shown template id
+         * AND any mood used in the last [MOOD_COOLDOWN_SIZE] roasts for
+         * this pkg; if that's empty (a small tier's pool exhausted), fall
+         * back to just avoiding the last id; if even that's empty (a
+         * single-candidate tier), allow anything. Never returns empty when
+         * [candidates] isn't — the caller always has something to `.random()`.
+         *
+         * Pulled out as a pure function (like tierFor/fill/parseMoods) so
+         * the cooldown logic itself is unit-testable without needing the
+         * Context that loading roast_pack.json requires.
+         */
+        internal fun eligiblePool(candidates: List<RoastTemplate>, avoidId: String?, avoidMoods: List<String>): List<RoastTemplate> {
+            val withoutLastId = candidates.filter { it.id != avoidId }.ifEmpty { candidates }
+            val withoutRecentMoods = withoutLastId.filter { it.asset !in avoidMoods }
+            return withoutRecentMoods.ifEmpty { withoutLastId }
         }
 
         /**
@@ -72,6 +94,15 @@ class RoastEngine(context: Context) {
     // the simplest version of that rule).
     private val lastTemplateId = mutableMapOf<String, String>()
 
+    // Per-pkg recent moods (most-recent last, capped at MOOD_COOLDOWN_SIZE)
+    // — a session that extends repeatedly stays on tier 3 forever, cycling
+    // a pool of only ~14 templates across 8 moods; avoiding just the last
+    // template id barely dents the repetition. This also fixes the live
+    // meme GIF's own repetition (GiphyMemeGifProvider always returns the
+    // same top search hit for a given mood's query), since a different
+    // mood means a different GIF search entirely.
+    private val recentMoods = mutableMapOf<String, ArrayDeque<String>>()
+
     data class PrecomputeResult(
         val templateId: String,
         val tier: Int,
@@ -97,10 +128,15 @@ class RoastEngine(context: Context) {
         val candidates = templates.filter { it.tier == tier && (!it.requiresIntentText || hasIntent) }
         if (candidates.isEmpty()) return null
 
-        val avoiding = lastTemplateId[pkg]
-        val pool = candidates.filter { it.id != avoiding }.ifEmpty { candidates }
+        val avoidingId = lastTemplateId[pkg]
+        val avoidingMoods = recentMoods[pkg].orEmpty().toList()
+        val pool = eligiblePool(candidates, avoidingId, avoidingMoods)
         val template = pool.random()
         lastTemplateId[pkg] = template.id
+        recentMoods.getOrPut(pkg) { ArrayDeque() }.apply {
+            addLast(template.asset)
+            while (size > MOOD_COOLDOWN_SIZE) removeFirst()
+        }
 
         val overageMin = (elapsedMin - grantedMin).coerceAtLeast(0)
         val slots = mapOf(

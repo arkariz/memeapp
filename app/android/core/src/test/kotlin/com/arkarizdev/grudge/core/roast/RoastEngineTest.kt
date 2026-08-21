@@ -1,7 +1,19 @@
 package com.arkarizdev.grudge.core.roast
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
+
+private fun template(id: String, asset: String) = RoastTemplate(
+    id = id,
+    tier = 1,
+    requiresIntentText = false,
+    line1 = "line1",
+    line2 = "line2",
+    degradeLine1 = "d1",
+    degradeLine2 = "d2",
+    asset = asset,
+)
 
 /**
  * Only the pure logic (tier escalation, slot filling) is JVM-testable
@@ -71,5 +83,54 @@ class RoastEngineTest {
     fun `parseMoods skips a mood entry with no queries array`() {
         val json = """{"moods": {"waiting": {"contentfilter": "high"}}}"""
         assertEquals(emptyMap<String, List<String>>(), RoastEngine.parseMoods(json))
+    }
+
+    @Test
+    fun `eligiblePool excludes the last template id and recent moods when alternatives exist`() {
+        val candidates = listOf(
+            template("t1_01", "side_eye"),
+            template("t1_02", "side_eye"),
+            template("t1_03", "stonks"),
+        )
+        val pool = RoastEngine.eligiblePool(candidates, avoidId = "t1_01", avoidMoods = listOf("side_eye"))
+        assertEquals(listOf("t1_03"), pool.map { it.id })
+    }
+
+    @Test
+    fun `eligiblePool falls back to ignoring mood cooldown when it would empty the pool`() {
+        // Every candidate is "side_eye" — honoring the mood cooldown would
+        // leave nothing, so it must fall back to just avoiding the last id.
+        val candidates = listOf(
+            template("t1_01", "side_eye"),
+            template("t1_02", "side_eye"),
+        )
+        val pool = RoastEngine.eligiblePool(candidates, avoidId = "t1_01", avoidMoods = listOf("side_eye"))
+        assertEquals(listOf("t1_02"), pool.map { it.id })
+    }
+
+    @Test
+    fun `eligiblePool falls back to the full candidate list for a single-candidate tier`() {
+        val candidates = listOf(template("t3_01", "waiting"))
+        val pool = RoastEngine.eligiblePool(candidates, avoidId = "t3_01", avoidMoods = listOf("waiting"))
+        assertEquals(listOf("t3_01"), pool.map { it.id })
+    }
+
+    @Test
+    fun `eligiblePool with no history returns every candidate`() {
+        val candidates = listOf(template("t1_01", "side_eye"), template("t1_02", "stonks"))
+        val pool = RoastEngine.eligiblePool(candidates, avoidId = null, avoidMoods = emptyList())
+        assertEquals(2, pool.size)
+    }
+
+    @Test
+    fun `eligiblePool with multiple recent moods excludes all of them`() {
+        val candidates = listOf(
+            template("t1_01", "side_eye"),
+            template("t1_02", "stonks"),
+            template("t1_03", "waiting"),
+        )
+        val pool = RoastEngine.eligiblePool(candidates, avoidId = null, avoidMoods = listOf("side_eye", "stonks"))
+        assertEquals(listOf("t1_03"), pool.map { it.id })
+        assertTrue(pool.all { it.asset !in listOf("side_eye", "stonks") })
     }
 }
