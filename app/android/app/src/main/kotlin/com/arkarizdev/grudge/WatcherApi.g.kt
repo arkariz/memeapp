@@ -403,6 +403,127 @@ data class PermissionSnapshotDto (
     return "PermissionSnapshotDto(hasNotificationPermission=$hasNotificationPermission, isIgnoringBatteryOptimizations=$isIgnoringBatteryOptimizations)"
   }
 }
+
+/**
+ * T-201 home screen: one watched app's today-so-far usage vs its budget.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class AppUsageDto (
+  val pkg: String,
+  val label: String,
+  val usedMin: Long,
+  val budgetMin: Long
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): AppUsageDto {
+      val pkg = pigeonVar_list[0] as String
+      val label = pigeonVar_list[1] as String
+      val usedMin = pigeonVar_list[2] as Long
+      val budgetMin = pigeonVar_list[3] as Long
+      return AppUsageDto(pkg, label, usedMin, budgetMin)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      pkg,
+      label,
+      usedMin,
+      budgetMin,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as AppUsageDto
+    return WatcherApiPigeonUtils.deepEquals(this.pkg, other.pkg) && WatcherApiPigeonUtils.deepEquals(this.label, other.label) && WatcherApiPigeonUtils.deepEquals(this.usedMin, other.usedMin) && WatcherApiPigeonUtils.deepEquals(this.budgetMin, other.budgetMin)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.pkg)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.label)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.usedMin)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.budgetMin)
+    return result
+  }
+  override fun toString(): String {
+    return "AppUsageDto(pkg=$pkg, label=$label, usedMin=$usedMin, budgetMin=$budgetMin)"
+  }
+}
+
+/**
+ * T-201 home screen (Figma 05): everything the home screen needs in one
+ * call — watch status (reusing the same fields as WatcherStatusDto rather
+ * than nesting it, since Pigeon DTOs don't compose well), the streak, and
+ * each enabled watched app's today-so-far usage.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class HomeSnapshotDto (
+  val isRunning: Boolean,
+  val hasUsageAccess: Boolean,
+  val hasOverlayPermission: Boolean,
+  val watcherStartedAtMs: Long? = null,
+  val streakCurrent: Long,
+  val streakBest: Long,
+  val apps: List<AppUsageDto>
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): HomeSnapshotDto {
+      val isRunning = pigeonVar_list[0] as Boolean
+      val hasUsageAccess = pigeonVar_list[1] as Boolean
+      val hasOverlayPermission = pigeonVar_list[2] as Boolean
+      val watcherStartedAtMs = pigeonVar_list[3] as Long?
+      val streakCurrent = pigeonVar_list[4] as Long
+      val streakBest = pigeonVar_list[5] as Long
+      val apps = pigeonVar_list[6] as List<AppUsageDto>
+      return HomeSnapshotDto(isRunning, hasUsageAccess, hasOverlayPermission, watcherStartedAtMs, streakCurrent, streakBest, apps)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      isRunning,
+      hasUsageAccess,
+      hasOverlayPermission,
+      watcherStartedAtMs,
+      streakCurrent,
+      streakBest,
+      apps,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as HomeSnapshotDto
+    return WatcherApiPigeonUtils.deepEquals(this.isRunning, other.isRunning) && WatcherApiPigeonUtils.deepEquals(this.hasUsageAccess, other.hasUsageAccess) && WatcherApiPigeonUtils.deepEquals(this.hasOverlayPermission, other.hasOverlayPermission) && WatcherApiPigeonUtils.deepEquals(this.watcherStartedAtMs, other.watcherStartedAtMs) && WatcherApiPigeonUtils.deepEquals(this.streakCurrent, other.streakCurrent) && WatcherApiPigeonUtils.deepEquals(this.streakBest, other.streakBest) && WatcherApiPigeonUtils.deepEquals(this.apps, other.apps)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.isRunning)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.hasUsageAccess)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.hasOverlayPermission)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.watcherStartedAtMs)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.streakCurrent)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.streakBest)
+    result = 31 * result + WatcherApiPigeonUtils.deepHash(this.apps)
+    return result
+  }
+  override fun toString(): String {
+    return "HomeSnapshotDto(isRunning=$isRunning, hasUsageAccess=$hasUsageAccess, hasOverlayPermission=$hasOverlayPermission, watcherStartedAtMs=$watcherStartedAtMs, streakCurrent=$streakCurrent, streakBest=$streakBest, apps=$apps)"
+  }
+}
 private open class WatcherApiPigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
@@ -426,6 +547,16 @@ private open class WatcherApiPigeonCodec : StandardMessageCodec() {
           PermissionSnapshotDto.fromList(it)
         }
       }
+      133.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          AppUsageDto.fromList(it)
+        }
+      }
+      134.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          HomeSnapshotDto.fromList(it)
+        }
+      }
       else -> super.readValueOfType(type, buffer)
     }
   }
@@ -445,6 +576,14 @@ private open class WatcherApiPigeonCodec : StandardMessageCodec() {
       }
       is PermissionSnapshotDto -> {
         stream.write(132)
+        writeValue(stream, value.toList())
+      }
+      is AppUsageDto -> {
+        stream.write(133)
+        writeValue(stream, value.toList())
+      }
+      is HomeSnapshotDto -> {
+        stream.write(134)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -468,6 +607,8 @@ interface WatcherHostApi {
    * unless the method is marked async.
    */
   fun getStatus(callback: (Result<WatcherStatusDto>) -> Unit)
+  /** T-201: the home screen's one data call — streak + per-app usage bars. */
+  fun getHomeSnapshot(callback: (Result<HomeSnapshotDto>) -> Unit)
   fun startWatcher()
   /**
    * Dev/test-only: manually trigger a grant to verify "grant-reload-on-
@@ -528,6 +669,24 @@ interface WatcherHostApi {
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             api.getStatus{ result: Result<WatcherStatusDto> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(WatcherApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(WatcherApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.getHomeSnapshot$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getHomeSnapshot{ result: Result<HomeSnapshotDto> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(WatcherApiPigeonUtils.wrapError(error))

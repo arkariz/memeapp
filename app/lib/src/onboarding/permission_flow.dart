@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/watcher_repository.dart';
-import '../home/scaffold_check_page.dart';
+import '../home/home_screen.dart';
 import 'notification_permission_bridge.dart';
 import 'permission_step_screen.dart';
 
@@ -124,7 +124,7 @@ class _PermissionFlowState extends State<PermissionFlow> {
     await widget.repo.startWatcher();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => ScaffoldCheckPage(repo: widget.repo)),
+      MaterialPageRoute(builder: (_) => HomeScreen(repo: widget.repo)),
       (route) => false,
     );
   }

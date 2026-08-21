@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'src/core/watcher_repository.dart';
-import 'src/home/scaffold_check_page.dart';
+import 'src/home/home_screen.dart';
 import 'src/onboarding/notification_permission_bridge.dart';
 import 'src/onboarding/welcome_screen.dart';
 import 'src/theme/grudge_theme.dart';
@@ -46,7 +46,7 @@ class _AppBootstrap extends StatelessWidget {
             body: Center(child: CircularProgressIndicator(color: GrudgeColors.ink)),
           );
         }
-        return snapshot.data! ? ScaffoldCheckPage(repo: repo) : WelcomeScreen(repo: repo);
+        return snapshot.data! ? HomeScreen(repo: repo) : WelcomeScreen(repo: repo);
       },
     );
   }

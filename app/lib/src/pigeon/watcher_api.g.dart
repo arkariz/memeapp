@@ -345,6 +345,146 @@ class PermissionSnapshotDto {
   }
 }
 
+/// T-201 home screen: one watched app's today-so-far usage vs its budget.
+class AppUsageDto {
+  AppUsageDto({
+    required this.pkg,
+    required this.label,
+    required this.usedMin,
+    required this.budgetMin,
+  });
+
+  String pkg;
+
+  String label;
+
+  int usedMin;
+
+  int budgetMin;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      pkg,
+      label,
+      usedMin,
+      budgetMin,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static AppUsageDto decode(Object result) {
+    result as List<Object?>;
+    return AppUsageDto(
+      pkg: result[0]! as String,
+      label: result[1]! as String,
+      usedMin: result[2]! as int,
+      budgetMin: result[3]! as int,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! AppUsageDto || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(pkg, other.pkg) && _deepEquals(label, other.label) && _deepEquals(usedMin, other.usedMin) && _deepEquals(budgetMin, other.budgetMin);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'AppUsageDto(pkg: $pkg, label: $label, usedMin: $usedMin, budgetMin: $budgetMin)';
+  }
+}
+
+/// T-201 home screen (Figma 05): everything the home screen needs in one
+/// call — watch status (reusing the same fields as WatcherStatusDto rather
+/// than nesting it, since Pigeon DTOs don't compose well), the streak, and
+/// each enabled watched app's today-so-far usage.
+class HomeSnapshotDto {
+  HomeSnapshotDto({
+    required this.isRunning,
+    required this.hasUsageAccess,
+    required this.hasOverlayPermission,
+    this.watcherStartedAtMs,
+    required this.streakCurrent,
+    required this.streakBest,
+    required this.apps,
+  });
+
+  bool isRunning;
+
+  bool hasUsageAccess;
+
+  bool hasOverlayPermission;
+
+  int? watcherStartedAtMs;
+
+  int streakCurrent;
+
+  int streakBest;
+
+  List<AppUsageDto> apps;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      isRunning,
+      hasUsageAccess,
+      hasOverlayPermission,
+      watcherStartedAtMs,
+      streakCurrent,
+      streakBest,
+      apps,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static HomeSnapshotDto decode(Object result) {
+    result as List<Object?>;
+    return HomeSnapshotDto(
+      isRunning: result[0]! as bool,
+      hasUsageAccess: result[1]! as bool,
+      hasOverlayPermission: result[2]! as bool,
+      watcherStartedAtMs: result[3] as int?,
+      streakCurrent: result[4]! as int,
+      streakBest: result[5]! as int,
+      apps: (result[6]! as List<Object?>).cast<AppUsageDto>(),
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! HomeSnapshotDto || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(isRunning, other.isRunning) && _deepEquals(hasUsageAccess, other.hasUsageAccess) && _deepEquals(hasOverlayPermission, other.hasOverlayPermission) && _deepEquals(watcherStartedAtMs, other.watcherStartedAtMs) && _deepEquals(streakCurrent, other.streakCurrent) && _deepEquals(streakBest, other.streakBest) && _deepEquals(apps, other.apps);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'HomeSnapshotDto(isRunning: $isRunning, hasUsageAccess: $hasUsageAccess, hasOverlayPermission: $hasOverlayPermission, watcherStartedAtMs: $watcherStartedAtMs, streakCurrent: $streakCurrent, streakBest: $streakBest, apps: $apps)';
+  }
+}
+
 
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
@@ -365,6 +505,12 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is PermissionSnapshotDto) {
       buffer.putUint8(132);
       writeValue(buffer, value.encode());
+    }    else if (value is AppUsageDto) {
+      buffer.putUint8(133);
+      writeValue(buffer, value.encode());
+    }    else if (value is HomeSnapshotDto) {
+      buffer.putUint8(134);
+      writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
     }
@@ -381,6 +527,10 @@ class _PigeonCodec extends StandardMessageCodec {
         return WatchedAppConfigDto.decode(readValue(buffer)!);
       case 132:
         return PermissionSnapshotDto.decode(readValue(buffer)!);
+      case 133:
+        return AppUsageDto.decode(readValue(buffer)!);
+      case 134:
+        return HomeSnapshotDto.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -424,6 +574,26 @@ class WatcherHostApi {
     )
     ;
     return pigeonVar_replyValue! as WatcherStatusDto;
+  }
+
+  /// T-201: the home screen's one data call — streak + per-app usage bars.
+  Future<HomeSnapshotDto> getHomeSnapshot() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.getHomeSnapshot$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as HomeSnapshotDto;
   }
 
   Future<void> startWatcher() async {

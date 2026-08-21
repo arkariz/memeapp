@@ -15,6 +15,7 @@ import com.arkarizdev.grudge.core.data.GrudgeDatabase
 import com.arkarizdev.grudge.core.data.RoastPayloadEntity
 import com.arkarizdev.grudge.core.data.SessionDao
 import com.arkarizdev.grudge.core.data.SessionEntity
+import com.arkarizdev.grudge.core.data.StreakEntity
 import com.arkarizdev.grudge.core.data.WatchedAppEntity
 import com.arkarizdev.grudge.core.roast.RoastEngine
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +25,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.time.ZoneId
 
 /**
  * Foreground service: polls UsageEvents, drives the SessionStateMachine,
@@ -194,7 +196,7 @@ class WatcherService : Service() {
         }
 
         sessionStateMachine.tick(now)
-        persistActiveSessions()
+        persistActiveSessions(now)
         maybeShowRoastOverlay(now)
     }
 
@@ -378,7 +380,7 @@ class WatcherService : Service() {
      * and every poll tick, so draining finished sessions here — rather than
      * only in poll() — catches outcomes from all of those paths uniformly.
      */
-    private suspend fun persistActiveSessions() {
+    private suspend fun persistActiveSessions(now: Long = System.currentTimeMillis()) {
         val dao = db.sessionDao()
 
         // T-111: write finalized outcomes as history (endedAt/outcome/
@@ -389,6 +391,8 @@ class WatcherService : Service() {
             dao.markEnded(existing.id, finished.endedAt, finished.outcome.name, finished.overageS, finished.extensions)
             Log.i(TAG, "session ended pkg=${finished.pkg} outcome=${finished.outcome} overageS=${finished.overageS}")
         }
+
+        evaluateStreak(now)
 
         val active = sessionStateMachine.allActiveSessions()
         val activePkgs = active.map { it.pkg }.toSet()
@@ -411,6 +415,36 @@ class WatcherService : Service() {
         for (pkg in previouslyActive - activePkgs) {
             dao.clearActive(pkg)
         }
+    }
+
+    /**
+     * T-201: rolls the streak forward across a day boundary, at most one
+     * day per call — see StreakEngine's own doc comment for why that's
+     * fine at a 500 ms poll cadence. Cheap in-memory guard before touching
+     * Room at all: on all but the ~once-a-day tick where a day just
+     * elapsed, lastCountedDay is already >= yesterday and this returns
+     * immediately.
+     */
+    private suspend fun evaluateStreak(now: Long) {
+        val zone = ZoneId.systemDefault()
+        val today = DayBoundary.isoDate(now, zone)
+        val yesterday = DayBoundary.isoDate(now - DayBoundary.ONE_DAY_MS, zone)
+
+        val row = db.streakDao().get()
+        val snapshot = StreakSnapshot(row?.current ?: 0, row?.best ?: 0, row?.lastCountedDay ?: "")
+        if (snapshot.lastCountedDay == today) return
+        if (snapshot.lastCountedDay.isNotEmpty() && snapshot.lastCountedDay >= yesterday) return
+
+        val nextDay = if (snapshot.lastCountedDay.isEmpty()) null else {
+            java.time.LocalDate.parse(snapshot.lastCountedDay).plusDays(1).toString()
+        }
+        val wasYesterdayClean = nextDay == yesterday && !db.sessionDao().hasNonBeatenSessionBetween(
+            DayBoundary.startOfDayMs(yesterday, zone),
+            DayBoundary.endOfDayMs(yesterday, zone),
+        )
+        val updated = StreakEngine.evaluate(yesterday, snapshot, wasYesterdayClean) ?: return
+        db.streakDao().upsert(StreakEntity(current = updated.current, best = updated.best, lastCountedDay = updated.lastCountedDay))
+        Log.i(TAG, "streak updated current=${updated.current} best=${updated.best} lastCountedDay=${updated.lastCountedDay}")
     }
 
     override fun onDestroy() {

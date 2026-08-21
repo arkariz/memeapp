@@ -14,13 +14,28 @@ import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.arkarizdev.grudge.core.data.GrudgeDatabase
+import com.arkarizdev.grudge.core.data.SessionEntity
 import com.arkarizdev.grudge.core.data.WatchedAppEntity
+import java.time.ZoneId
 
 data class AppInfo(val pkg: String, val label: String)
 
 data class WatchedAppConfig(val pkg: String, val label: String, val budgetMin: Int, val enabled: Boolean)
 
 data class PermissionSnapshot(val hasNotificationPermission: Boolean, val isIgnoringBatteryOptimizations: Boolean)
+
+/** T-201 home screen: one watched app's today-so-far usage vs its budget. */
+data class AppUsageSnapshot(val pkg: String, val label: String, val usedMin: Int, val budgetMin: Int)
+
+data class HomeSnapshot(
+    val isRunning: Boolean,
+    val hasUsageAccess: Boolean,
+    val hasOverlayPermission: Boolean,
+    val watcherStartedAt: Long?,
+    val streakCurrent: Int,
+    val streakBest: Int,
+    val apps: List<AppUsageSnapshot>,
+)
 
 /**
  * Entry point the app module's Pigeon handler delegates to. Kept as a plain
@@ -150,6 +165,59 @@ object WatcherCore {
         context.startActivity(
             Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
         )
+    }
+
+    /**
+     * T-201: streak (current/best) plus each enabled watched app's
+     * today-so-far usage vs its budget, for the home screen's "today's
+     * damage" bars. Read-only — the streak itself is only ever written by
+     * WatcherService.evaluateStreak, on the poll loop.
+     */
+    suspend fun getHomeSnapshot(context: Context): HomeSnapshot {
+        val db = GrudgeDatabase.get(context)
+        val heartbeat = HeartbeatStore(db.heartbeatDao())
+        val lastTick = heartbeat.lastTickAt()
+        val heartbeatAgeMs = lastTick?.let { System.currentTimeMillis() - it }
+        val isRunning = heartbeatAgeMs != null && heartbeatAgeMs < STALE_HEARTBEAT_MS
+        val streak = db.streakDao().get()
+
+        val now = System.currentTimeMillis()
+        val zone = ZoneId.systemDefault()
+        val today = DayBoundary.isoDate(now, zone)
+        val startOfDay = DayBoundary.startOfDayMs(today, zone)
+        val endOfDay = DayBoundary.endOfDayMs(today, zone)
+
+        val apps = db.watchedAppDao().enabled().map { app ->
+            val sessions = db.sessionDao().sessionsOverlapping(app.pkg, startOfDay, endOfDay)
+            AppUsageSnapshot(
+                pkg = app.pkg,
+                label = resolveAppLabel(context, app.pkg),
+                usedMin = usedMinutesToday(sessions, now, startOfDay, endOfDay),
+                budgetMin = app.budgetMin,
+            )
+        }
+
+        return HomeSnapshot(
+            isRunning = isRunning,
+            hasUsageAccess = hasUsageAccess(context),
+            hasOverlayPermission = Settings.canDrawOverlays(context),
+            watcherStartedAt = heartbeat.serviceStartedAt(),
+            streakCurrent = streak?.current ?: 0,
+            streakBest = streak?.best ?: 0,
+            apps = apps,
+        )
+    }
+
+    /** Clamps each session to [startOfDay, min(endOfDay, now)) before summing — a session opened before midnight or still active must not count minutes outside today. */
+    private fun usedMinutesToday(sessions: List<SessionEntity>, now: Long, startOfDay: Long, endOfDay: Long): Int {
+        var totalMs = 0L
+        val windowEnd = minOf(endOfDay, now)
+        for (s in sessions) {
+            val start = maxOf(s.openedAt, startOfDay)
+            val end = minOf(s.endedAt ?: now, windowEnd)
+            if (end > start) totalMs += (end - start)
+        }
+        return (totalMs / 60_000L).toInt()
     }
 
     private fun hasUsageAccess(context: Context): Boolean {

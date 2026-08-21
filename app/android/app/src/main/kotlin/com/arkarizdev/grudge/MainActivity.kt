@@ -62,6 +62,27 @@ private class WatcherApiHandler(private val activity: MainActivity) : WatcherHos
         }
     }
 
+    override fun getHomeSnapshot(callback: (Result<HomeSnapshotDto>) -> Unit) {
+        scope.launch {
+            val snap = WatcherCore.getHomeSnapshot(activity)
+            callback(
+                Result.success(
+                    HomeSnapshotDto(
+                        isRunning = snap.isRunning,
+                        hasUsageAccess = snap.hasUsageAccess,
+                        hasOverlayPermission = snap.hasOverlayPermission,
+                        watcherStartedAtMs = snap.watcherStartedAt,
+                        streakCurrent = snap.streakCurrent.toLong(),
+                        streakBest = snap.streakBest.toLong(),
+                        apps = snap.apps.map {
+                            AppUsageDto(pkg = it.pkg, label = it.label, usedMin = it.usedMin.toLong(), budgetMin = it.budgetMin.toLong())
+                        },
+                    )
+                )
+            )
+        }
+    }
+
     override fun startWatcher() {
         WatcherCore.startWatcher(activity)
     }

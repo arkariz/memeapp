@@ -13,6 +13,7 @@ class WatcherRepository {
   final WatcherHostApi _api;
 
   Future<WatcherStatusDto> getStatus() => _api.getStatus();
+  Future<HomeSnapshotDto> getHomeSnapshot() => _api.getHomeSnapshot();
   Future<void> startWatcher() => _api.startWatcher();
   Future<void> debugGrant(String pkg, int minutes, String? intentText) => _api.debugGrant(pkg, minutes, intentText);
 

@@ -40,6 +40,27 @@ interface SessionDao {
     @Query("SELECT COUNT(*) FROM session WHERE endedAt IS NULL")
     suspend fun activeCount(): Int
 
+    /**
+     * T-201 home screen: every session that overlaps today's window at
+     * all, including the still-active one (endedAt IS NULL) — the caller
+     * clamps each row to the window and to "now" itself, since a session
+     * opened before midnight or still running shouldn't count minutes
+     * outside today.
+     */
+    @Query("SELECT * FROM session WHERE pkg = :pkg AND openedAt < :end AND (endedAt IS NULL OR endedAt >= :start)")
+    suspend fun sessionsOverlapping(pkg: String, start: Long, end: Long): List<SessionEntity>
+
+    /**
+     * T-201 streak engine: did any session ending in [start, end) finalize
+     * as anything other than BEATEN? Drives the day-boundary rollover in
+     * StreakEngine — a day with even one OVERAGE/EXTENDED breaks it.
+     */
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM session WHERE endedAt >= :start AND endedAt < :end " +
+            "AND outcome IS NOT NULL AND outcome != 'BEATEN')"
+    )
+    suspend fun hasNonBeatenSessionBetween(start: Long, end: Long): Boolean
+
     @Insert
     suspend fun insert(session: SessionEntity): Long
 

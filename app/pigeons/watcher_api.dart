@@ -61,6 +61,40 @@ class PermissionSnapshotDto {
   bool isIgnoringBatteryOptimizations;
 }
 
+/// T-201 home screen: one watched app's today-so-far usage vs its budget.
+class AppUsageDto {
+  AppUsageDto({required this.pkg, required this.label, required this.usedMin, required this.budgetMin});
+
+  String pkg;
+  String label;
+  int usedMin;
+  int budgetMin;
+}
+
+/// T-201 home screen (Figma 05): everything the home screen needs in one
+/// call — watch status (reusing the same fields as WatcherStatusDto rather
+/// than nesting it, since Pigeon DTOs don't compose well), the streak, and
+/// each enabled watched app's today-so-far usage.
+class HomeSnapshotDto {
+  HomeSnapshotDto({
+    required this.isRunning,
+    required this.hasUsageAccess,
+    required this.hasOverlayPermission,
+    this.watcherStartedAtMs,
+    required this.streakCurrent,
+    required this.streakBest,
+    required this.apps,
+  });
+
+  bool isRunning;
+  bool hasUsageAccess;
+  bool hasOverlayPermission;
+  int? watcherStartedAtMs;
+  int streakCurrent;
+  int streakBest;
+  List<AppUsageDto> apps;
+}
+
 /// Dart -> Kotlin: queries/commands the app module implements against
 /// WatcherCore. startWatcher/debugGrant are dev/test affordances (T-102/
 /// T-103) — the real product starts the service from onboarding (T-109)
@@ -72,6 +106,10 @@ abstract class WatcherHostApi {
   /// unless the method is marked async.
   @async
   WatcherStatusDto getStatus();
+
+  /// T-201: the home screen's one data call — streak + per-app usage bars.
+  @async
+  HomeSnapshotDto getHomeSnapshot();
 
   void startWatcher();
 
