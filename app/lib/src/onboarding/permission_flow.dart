@@ -33,7 +33,7 @@ List<PermissionStepConfig> buildPermissionSteps(WatcherRepository repo) => [
     ctaLabel: 'Grant Usage Access',
     caption: "It literally can't work without this.",
     recoveryBody:
-        'Still not granted. Find Grudge in the Usage Access list and switch it on — '
+        'Still not granted. Find Bonked in the Usage Access list and switch it on — '
         'no evidence, no roast, no app.',
     checkGranted: () async => (await repo.getStatus()).hasUsageAccess,
     onRequest: repo.openUsageAccessSettings,
@@ -52,7 +52,7 @@ List<PermissionStepConfig> buildPermissionSteps(WatcherRepository repo) => [
     ctaLabel: 'Grant display access',
     caption: 'No overlay, no roast. Just a quiet, unsatisfying silence.',
     recoveryBody:
-        'Still not granted. Find Grudge and enable "Allow display over other apps" — '
+        'Still not granted. Find Bonked and enable "Allow display over other apps" — '
         'without this, your time just runs out with nothing to show for it.',
     checkGranted: () async => (await repo.getStatus()).hasOverlayPermission,
     onRequest: repo.openOverlayPermissionSettings,
@@ -64,7 +64,7 @@ List<PermissionStepConfig> buildPermissionSteps(WatcherRepository repo) => [
     title: 'I NEED A TINY\nLITTLE NOTIFICATION.',
     subtitle: 'Android calls it a "foreground service." We call it staying employed.',
     checklist: const [
-      ChecklistLine(true, 'One quiet "Grudge is watching" note while it works.'),
+      ChecklistLine(true, 'One quiet "Bonked is watching" note while it works.'),
       ChecklistLine(true, "Required by Android to keep watching — not our idea of fun either."),
       ChecklistLine(false, "Won't spam you with \"come back!\" guilt-trip pings."),
     ],

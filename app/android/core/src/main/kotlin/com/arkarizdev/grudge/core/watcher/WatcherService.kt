@@ -115,7 +115,7 @@ class WatcherService : Service() {
             NotificationChannel(NOTIF_CHANNEL, "Watcher", NotificationManager.IMPORTANCE_LOW)
         )
         val notif = Notification.Builder(this, NOTIF_CHANNEL)
-            .setContentTitle("Grudge is watching")
+            .setContentTitle("Bonked is watching")
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .build()
         startForeground(NOTIF_ID, notif)

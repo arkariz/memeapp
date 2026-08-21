@@ -81,7 +81,7 @@ class _ScaffoldCheckPageState extends State<ScaffoldCheckPage> with WidgetsBindi
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Grudge — T-103 scaffold check')),
+      appBar: AppBar(title: const Text('Bonked — T-103 scaffold check')),
       body: Column(
         children: [
           if (_isDown)

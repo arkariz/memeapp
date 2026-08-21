@@ -59,8 +59,8 @@ class _CardScreenState extends State<CardScreen> {
         ShareParams(
           files: [XFile(file.path)],
           text: _isBeaten
-              ? "Said ${widget.card.grantedMin} minutes, took ${widget.card.takenMin}. Grudge is watching."
-              : "${widget.card.streakCount}-day streak with Grudge. It roasts, I resist.",
+              ? "Said ${widget.card.grantedMin} minutes, took ${widget.card.takenMin}. Bonked is watching."
+              : "${widget.card.streakCount}-day streak with Bonked. It roasts, I resist.",
         ),
       );
     } finally {
@@ -140,7 +140,7 @@ class _Card extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             color: GrudgeColors.ink,
             child: const Text(
-              'memeapp · CERTIFIED',
+              'Bonked · CERTIFIED',
               style: TextStyle(color: GrudgeColors.paper, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5),
             ),
           ),

@@ -133,9 +133,13 @@ class _Header extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'memeapp',
-            style: TextStyle(color: GrudgeColors.paper, fontSize: 22, fontWeight: FontWeight.w900),
+          const Expanded(
+            child: Text(
+              'Bonked — Bro, Put the Phone Down',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: GrudgeColors.paper, fontSize: 22, fontWeight: FontWeight.w900),
+            ),
           ),
           IconButton(
             onPressed: onSettingsTap,

@@ -20,7 +20,7 @@ class GrudgeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Grudge',
+      title: 'Bonked — Bro, Put the Phone Down',
       theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber)),
       home: _AppBootstrap(repo: repo),
     );
