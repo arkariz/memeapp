@@ -543,27 +543,36 @@ class RoastOverlayController(private val context: Context) {
      * rendered from a live-fetched GIF (memeSection's fromCachedGif flag),
      * not just because roast_payload.gifSource says GIPHY — a since-GC'd
      * cache file falls through to the bundled mascot, and attribution
-     * must track what's truly on screen. Logo is optional/user-sourced
-     * (see assets/giphy/README.md) — text always renders regardless.
+     * must track what's truly on screen.
+     *
+     * Uses GIPHY's own official "Powered by GIPHY" lockup image (bundled
+     * at giphy/attribution_badge.png, sourced from their brand-assets
+     * portal — see assets/giphy/README.md) rather than recreating the
+     * text+logo combo by hand: it's both the ToS-safest choice (their
+     * exact approved artwork, not our approximation) and simpler code.
+     * Falls back to a plain text line if the asset is ever missing —
+     * same graceful-hide-on-missing-asset pattern as every other image
+     * in this app, so a stale checkout without the file still ships a
+     * ToS-compliant (if less polished) attribution rather than nothing.
      */
     private fun giphyAttributionRow(): View {
-        val row = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, dp(12))
+        val badge = loadDrawable("giphy/attribution_badge.png")
+        if (badge != null) {
+            val heightPx = dp(18)
+            val widthPx = (heightPx * badge.intrinsicWidth / badge.intrinsicHeight.toFloat()).toInt()
+            return ImageView(context).apply {
+                setImageDrawable(badge)
+                layoutParams = LinearLayout.LayoutParams(widthPx, heightPx).apply {
+                    bottomMargin = dp(12)
+                }
+            }
         }
-        loadDrawable("giphy/attribution_badge.png")?.let { logo ->
-            row.addView(
-                ImageView(context).apply { setImageDrawable(logo) },
-                LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginEnd = dp(6) },
-            )
-        }
-        row.addView(TextView(context).apply {
+        return TextView(context).apply {
             text = "Powered by GIPHY"
             setTextColor(COLOR_GRAY)
             textSize = 10f
-        })
-        return row
+            setPadding(0, 0, 0, dp(12))
+        }
     }
 
     fun dismissIfShowing(pkg: String) {
