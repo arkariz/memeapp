@@ -28,7 +28,6 @@ class AppPickerScreen extends StatefulWidget {
 }
 
 class _AppPickerScreenState extends State<AppPickerScreen> {
-  static const _budgetOptions = [5, 10, 15, 30];
   static const _defaultBudget = 15;
 
   final _searchController = TextEditingController();
@@ -136,7 +135,6 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
                       itemBuilder: (context, index) => _AppRow(
                         app: _filtered[index],
                         budgetMin: _selectedBudgets[_filtered[index].pkg],
-                        budgetOptions: _budgetOptions,
                         onToggle: () {
                           setState(() {
                             final pkg = _filtered[index].pkg;
@@ -176,18 +174,33 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
   }
 }
 
+/// Budget slider range: 5 minutes to 3 hours (180 minutes), snapping to
+/// 5-minute increments — matches the old chip picker's granularity while
+/// covering a much wider span than the fixed 5/10/15/30 options did.
+const _kBudgetMinMinutes = 5;
+const _kBudgetMaxMinutes = 180;
+const _kBudgetStepMinutes = 5;
+
+/// Formats minutes with the unit that reads best at that size: "30M" below
+/// an hour, "1H" / "1H30M" at or above it — never "90M" once hours make
+/// more sense, and never drops the leftover minutes when they're non-zero.
+String _formatBudget(int minutes) {
+  if (minutes < 60) return '${minutes}M';
+  final hours = minutes ~/ 60;
+  final remainder = minutes % 60;
+  return remainder == 0 ? '${hours}H' : '${hours}H${remainder}M';
+}
+
 class _AppRow extends StatelessWidget {
   const _AppRow({
     required this.app,
     required this.budgetMin,
-    required this.budgetOptions,
     required this.onToggle,
     required this.onBudgetChanged,
   });
 
   final AppInfoDto app;
   final int? budgetMin;
-  final List<int> budgetOptions;
   final VoidCallback onToggle;
   final ValueChanged<int> onBudgetChanged;
 
@@ -231,35 +244,45 @@ class _AppRow extends StatelessWidget {
                 ),
               ),
             ),
-            if (selected)
+            if (selected && budgetMin != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                child: Row(
-                  children: budgetOptions
-                      .map(
-                        (m) => Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: GestureDetector(
-                            onTap: () => onBudgetChanged(m),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: budgetMin == m ? BonkedColors.ink : Colors.transparent,
-                                border: Border.all(color: BonkedColors.ink, width: 2),
-                              ),
-                              child: Text(
-                                '${m}M',
-                                style: TextStyle(
-                                  color: budgetMin == m ? BonkedColors.yellow : BonkedColors.ink,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _formatBudget(budgetMin!),
+                      style: const TextStyle(color: BonkedColors.ink, fontWeight: FontWeight.w900, fontSize: 16),
+                    ),
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: BonkedColors.ink,
+                        inactiveTrackColor: BonkedColors.ink.withValues(alpha: 0.25),
+                        thumbColor: BonkedColors.ink,
+                        overlayColor: BonkedColors.ink.withValues(alpha: 0.12),
+                        valueIndicatorColor: BonkedColors.ink,
+                        valueIndicatorTextStyle: const TextStyle(color: BonkedColors.yellow, fontWeight: FontWeight.w800),
+                      ),
+                      child: Slider(
+                        value: budgetMin!.toDouble().clamp(_kBudgetMinMinutes.toDouble(), _kBudgetMaxMinutes.toDouble()),
+                        min: _kBudgetMinMinutes.toDouble(),
+                        max: _kBudgetMaxMinutes.toDouble(),
+                        divisions: (_kBudgetMaxMinutes - _kBudgetMinMinutes) ~/ _kBudgetStepMinutes,
+                        label: _formatBudget(budgetMin!),
+                        onChanged: (value) => onBudgetChanged(value.round()),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_formatBudget(_kBudgetMinMinutes), style: bonkedBody(size: 11)),
+                          Text(_formatBudget(_kBudgetMaxMinutes), style: bonkedBody(size: 11)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
           ],
