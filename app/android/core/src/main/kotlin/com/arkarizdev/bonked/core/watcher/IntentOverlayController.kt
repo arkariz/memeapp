@@ -99,6 +99,19 @@ class IntentOverlayController(private val context: Context) {
             "Crafting your own narrative. We respect the art.",
         )
 
+        // T-104: the field is never allowed to end up blank (see
+        // DEFAULT_EXCUSE and the focus-loss/START fallbacks below) — but
+        // the user can still backspace their way to empty mid-edit, and
+        // when they do, this reacts to THAT instead of silently letting
+        // it happen. Picked at random each time the field goes empty.
+        private val EXCUSE_EMPTY_ROASTS = listOf(
+            "Nothing? Not even a bad excuse?",
+            "Silence isn't an excuse. Try again.",
+            "Even a weak excuse beats no excuse.",
+            "Deleting the evidence won't work here.",
+            "The field is judging this blank stare.",
+        )
+
         private const val COLOR_INK = 0xFF0D0D0D.toInt()
         private const val COLOR_PAPER = 0xFFFFFFFF.toInt()
         private const val COLOR_YELLOW = 0xFFFFE600.toInt()
@@ -335,10 +348,20 @@ class IntentOverlayController(private val context: Context) {
                     val text = s?.toString().orEmpty()
                     excuseChipViews.forEach { (e, v) -> v.background = chipBackground(e == text) }
 
-                    if (text.isEmpty() || EXCUSE_CHIPS.contains(text)) {
-                        // Empty, or an exact chip pick (even if reached by
-                        // typing it out by hand) — nothing custom to react
-                        // to yet.
+                    if (text.isEmpty()) {
+                        // The field isn't allowed to stay blank (see
+                        // DEFAULT_EXCUSE / the focus-loss and START
+                        // fallbacks below), but it can be *reached*
+                        // mid-edit — react to that attempt instead of
+                        // quietly doing nothing.
+                        wasCustomTyping = false
+                        typedExcuseRoast.text = "✍️ ${EXCUSE_EMPTY_ROASTS.random()}"
+                        typedExcuseRoast.visibility = View.VISIBLE
+                        return
+                    }
+                    if (EXCUSE_CHIPS.contains(text)) {
+                        // An exact chip pick (even if reached by typing it
+                        // out by hand) — nothing custom to react to yet.
                         wasCustomTyping = false
                         typedExcuseRoast.visibility = View.GONE
                         return
@@ -359,6 +382,19 @@ class IntentOverlayController(private val context: Context) {
                     typedExcuseRoast.visibility = View.VISIBLE
                 }
             })
+            // Belt-and-suspenders against the field settling on blank:
+            // the TextWatcher above already roasts a mid-edit empty
+            // state, but on losing focus (keyboard dismissed, tapped
+            // elsewhere) with nothing typed, snap back to DEFAULT_EXCUSE
+            // rather than leaving it blank. START's own click handler
+            // below has the same fallback for the case where START is
+            // tapped without a focus-loss ever firing first.
+            setOnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus && text.isNullOrBlank()) {
+                    setText(DEFAULT_EXCUSE)
+                    setSelection(DEFAULT_EXCUSE.length)
+                }
+            }
         }
         excuseFieldRef = excuseField
         // Pre-select DEFAULT_EXCUSE now that the watcher is attached, so
@@ -383,8 +419,13 @@ class IntentOverlayController(private val context: Context) {
             setBackgroundColor(COLOR_INK)
             isAllCaps = true
             setOnClickListener {
-                val text = excuseField.text?.toString()?.trim().takeUnless { it.isNullOrEmpty() }
-                Log.i(TAG, "START tapped pkg=$pkg minutes=$selectedMinutes hasText=${text != null}")
+                // Same DEFAULT_EXCUSE fallback as the focus-loss handler
+                // above, for the path where START is tapped directly
+                // without the field ever losing focus first (e.g. the IME
+                // action button) — the excuse text is no longer optional,
+                // so this must never pass null/blank to onGrant.
+                val text = excuseField.text?.toString()?.trim().takeUnless { it.isNullOrEmpty() } ?: DEFAULT_EXCUSE
+                Log.i(TAG, "START tapped pkg=$pkg minutes=$selectedMinutes text=$text")
                 onGrant(selectedMinutes, text)
                 dismissViewOnMainThread() // already on the main thread — this is a click listener
             }
