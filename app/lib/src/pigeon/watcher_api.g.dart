@@ -108,7 +108,7 @@ int _deepHash(Object? value) {
 
 
 /// Status snapshot for the watcher service. Mirrors
-/// com.arkarizdev.grudge.core.watcher.WatcherStatus — kept as plain DTOs per tech
+/// com.arkarizdev.bonked.core.watcher.WatcherStatus — kept as plain DTOs per tech
 /// plan §2 ("Pigeon typed channels — DTOs only, no SQL").
 class WatcherStatusDto {
   WatcherStatusDto({
@@ -649,7 +649,7 @@ class WatcherHostApi {
   /// main-thread queries, and Pigeon host calls land on the main thread
   /// unless the method is marked async.
   Future<WatcherStatusDto> getStatus() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.getStatus$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.getStatus$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -669,7 +669,7 @@ class WatcherHostApi {
 
   /// T-201: the home screen's one data call — streak + per-app usage bars.
   Future<HomeSnapshotDto> getHomeSnapshot() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.getHomeSnapshot$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.getHomeSnapshot$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -690,7 +690,7 @@ class WatcherHostApi {
   /// T-202: the next success-side card to show, or null if nothing new
   /// beat its estimate / hit a streak milestone since the last one shown.
   Future<CardDto?> getPendingCard() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.getPendingCard$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.getPendingCard$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -712,7 +712,7 @@ class WatcherHostApi {
   /// getPendingCard never returns it again. Called once the card screen
   /// is dismissed, shared or not.
   Future<void> acknowledgeCard(String kind, int referenceId) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.acknowledgeCard$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.acknowledgeCard$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -730,7 +730,7 @@ class WatcherHostApi {
   }
 
   Future<void> startWatcher() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.startWatcher$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.startWatcher$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -750,7 +750,7 @@ class WatcherHostApi {
   /// Dev/test-only: manually trigger a grant to verify "grant-reload-on-
   /// restart" without T-104's intent overlay existing yet.
   Future<void> debugGrant(String pkg, int minutes, String? intentText) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.debugGrant$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.debugGrant$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -770,7 +770,7 @@ class WatcherHostApi {
   /// T-109: the app picker's data source — every launchable app on-device,
   /// via the launcher-intent `<queries>` declaration.
   Future<List<AppInfoDto>> getLaunchableApps() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.getLaunchableApps$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.getLaunchableApps$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -792,7 +792,7 @@ class WatcherHostApi {
   /// picker can pre-select apps if onboarding is re-entered (revocation
   /// recovery) rather than always starting from a blank slate.
   Future<List<WatchedAppConfigDto>> getWatchedApps() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.getWatchedApps$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.getWatchedApps$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -814,7 +814,7 @@ class WatcherHostApi {
   /// selection + per-app budgets. Full-replace, not incremental — the
   /// picker screen always shows and edits the complete set.
   Future<void> saveWatchedApps(List<WatchedAppConfigDto> apps) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.saveWatchedApps$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.saveWatchedApps$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -834,7 +834,7 @@ class WatcherHostApi {
   /// T-109: the two special-access grants not already covered by
   /// WatcherStatusDto (usage access, overlay permission).
   Future<PermissionSnapshotDto> getPermissionSnapshot() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.getPermissionSnapshot$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.getPermissionSnapshot$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -853,7 +853,7 @@ class WatcherHostApi {
   }
 
   Future<void> openUsageAccessSettings() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.openUsageAccessSettings$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.openUsageAccessSettings$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -871,7 +871,7 @@ class WatcherHostApi {
   }
 
   Future<void> openOverlayPermissionSettings() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.openOverlayPermissionSettings$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.openOverlayPermissionSettings$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -893,7 +893,7 @@ class WatcherHostApi {
   /// via WatcherFlutterApi.onNotificationPermissionResult, not a return
   /// value here, since Android's permission callback is itself async.
   Future<void> requestNotificationPermission() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.requestNotificationPermission$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.requestNotificationPermission$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -914,7 +914,7 @@ class WatcherHostApi {
   /// dialog directly (not a Settings page detour) with an honest
   /// explanation shown beforehand in-app, per PRD P0-1.
   Future<void> requestBatteryExemption() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.requestBatteryExemption$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.requestBatteryExemption$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -932,7 +932,7 @@ class WatcherHostApi {
   }
 
   Future<bool> isOnboardingComplete() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.isOnboardingComplete$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.isOnboardingComplete$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -951,7 +951,7 @@ class WatcherHostApi {
   }
 
   Future<void> setOnboardingComplete() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.setOnboardingComplete$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.setOnboardingComplete$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -975,7 +975,7 @@ class WatcherHostApi {
   /// AnalyticsCore.logEventFromBridge (no-PII audit) — unlisted keys are
   /// dropped, not sent, if this ever drifts out of sync.
   Future<void> logAnalyticsEvent(String name, String propsJson) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.logAnalyticsEvent$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.bonked.WatcherHostApi.logAnalyticsEvent$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1005,7 +1005,7 @@ abstract class WatcherFlutterApi {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.grudge.WatcherFlutterApi.onNotificationPermissionResult$messageChannelSuffix', pigeonChannelCodec,
+          'dev.flutter.pigeon.bonked.WatcherFlutterApi.onNotificationPermissionResult$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);

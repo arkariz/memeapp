@@ -4,7 +4,7 @@ import '../core/watcher_repository.dart';
 import '../onboarding/permission_flow.dart';
 import '../onboarding/permission_step_screen.dart';
 import '../pigeon/watcher_api.g.dart';
-import '../theme/grudge_theme.dart';
+import '../theme/bonked_theme.dart';
 
 /// T-110 recovery screen (matches the ERR-1 Figma concept: full red
 /// background, diagnosis card, "RESURRECT THE WATCH" CTA). Reached from
@@ -60,27 +60,27 @@ class _WatchDownScreenState extends State<WatchDownScreen> {
   Widget build(BuildContext context) {
     final status = _status;
     return Scaffold(
-      backgroundColor: GrudgeColors.red,
-      appBar: AppBar(backgroundColor: GrudgeColors.red, elevation: 0, iconTheme: const IconThemeData(color: GrudgeColors.paper)),
+      backgroundColor: BonkedColors.red,
+      appBar: AppBar(backgroundColor: BonkedColors.red, elevation: 0, iconTheme: const IconThemeData(color: BonkedColors.paper)),
       body: SafeArea(
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
           child: status == null
-              ? const Center(child: CircularProgressIndicator(color: GrudgeColors.paper))
+              ? const Center(child: CircularProgressIndicator(color: BonkedColors.paper))
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('THE WATCH\nIS DOWN.', style: grudgeHeadline(size: 36, color: GrudgeColors.paper)),
+                    Text('THE WATCH\nIS DOWN.', style: bonkedHeadline(size: 36, color: BonkedColors.paper)),
                     const SizedBox(height: 12),
                     const Text(
                       "It stopped watching, silently. Here's exactly why.",
-                      style: TextStyle(color: GrudgeColors.paper, fontSize: 15),
+                      style: TextStyle(color: BonkedColors.paper, fontSize: 15),
                     ),
                     const SizedBox(height: 24),
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: hardShadowBox(fill: GrudgeColors.paper, border: GrudgeColors.ink),
+                      decoration: hardShadowBox(fill: BonkedColors.paper, border: BonkedColors.ink),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -95,7 +95,7 @@ class _WatchDownScreenState extends State<WatchDownScreen> {
                       ),
                     ),
                     const Spacer(),
-                    GrudgeLightButton(label: 'Resurrect the watch', onPressed: _recover),
+                    BonkedLightButton(label: 'Resurrect the watch', onPressed: _recover),
                   ],
                 ),
         ),
@@ -121,7 +121,7 @@ class _DiagnosisRow extends StatelessWidget {
           Text(
             ok ? '✓' : '✗',
             style: TextStyle(
-              color: ok ? GrudgeColors.green : GrudgeColors.red,
+              color: ok ? BonkedColors.green : BonkedColors.red,
               fontWeight: FontWeight.w900,
               fontSize: 16,
             ),
@@ -130,7 +130,7 @@ class _DiagnosisRow extends StatelessWidget {
           Expanded(
             child: Text(
               ok || failLabel == null ? label : '$label — $failLabel',
-              style: const TextStyle(color: GrudgeColors.ink, fontWeight: FontWeight.w700, fontSize: 15),
+              style: const TextStyle(color: BonkedColors.ink, fontWeight: FontWeight.w700, fontSize: 15),
             ),
           ),
         ],

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/watcher_repository.dart';
-import '../theme/grudge_theme.dart';
+import '../theme/bonked_theme.dart';
 import 'app_picker_screen.dart';
 
 /// OB-0, rebuilt to match the actual Figma screenshot the user supplied
@@ -18,18 +18,18 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GrudgeColors.paper,
+      backgroundColor: BonkedColors.paper,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Full-bleed to the very top edge, behind the status bar — matches
           // the screenshot's black bar starting at y=0, not below the notch.
           Container(
-            color: GrudgeColors.ink,
+            color: BonkedColors.ink,
             padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + 20, 24, 20),
             child: const Text(
-              'grudge',
-              style: TextStyle(color: GrudgeColors.paper, fontSize: 20, fontWeight: FontWeight.w900),
+              'bonked',
+              style: TextStyle(color: BonkedColors.paper, fontSize: 20, fontWeight: FontWeight.w900),
             ),
           ),
           Expanded(
@@ -45,10 +45,10 @@ class WelcomeScreen extends StatelessWidget {
                       angle: -0.035,
                       child: Container(
                         padding: const EdgeInsets.all(16),
-                        decoration: hardShadowBox(fill: GrudgeColors.yellow),
+                        decoration: hardShadowBox(fill: BonkedColors.yellow),
                         child: Text(
                           'YOUR SCREEN TIME IS\nABOUT TO GET ROASTED.',
-                          style: grudgeHeadline(size: 32),
+                          style: bonkedHeadline(size: 32),
                         ),
                       ),
                     ),
@@ -56,10 +56,10 @@ class WelcomeScreen extends StatelessWidget {
                     Text(
                       "Set a limit. Blow past it. Get memed with your own words. "
                       "Stop sooner.\n\nThat's it. That's the app.",
-                      style: grudgeBody(size: 16),
+                      style: bonkedBody(size: 16),
                     ),
                     const Spacer(flex: 5),
-                    GrudgeDarkButton(
+                    BonkedDarkButton(
                       label: "Let's go",
                       onPressed: () {
                         Navigator.of(context).push(
@@ -73,7 +73,7 @@ class WelcomeScreen extends StatelessWidget {
                       child: Text(
                         'Setup takes 2 minutes. Unlike TikTok.',
                         textAlign: TextAlign.center,
-                        style: grudgeBody(size: 13),
+                        style: bonkedBody(size: 13),
                       ),
                     ),
                   ],

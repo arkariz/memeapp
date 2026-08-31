@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/watcher_repository.dart';
-import '../theme/grudge_theme.dart';
+import '../theme/bonked_theme.dart';
 import 'watch_down_screen.dart';
 
 /// T-101/T-102 scaffold entry point, still the post-onboarding landing
@@ -86,14 +86,14 @@ class _ScaffoldCheckPageState extends State<ScaffoldCheckPage> with WidgetsBindi
         children: [
           if (_isDown)
             Material(
-              color: GrudgeColors.red,
+              color: BonkedColors.red,
               child: InkWell(
                 onTap: _openWatchDownScreen,
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Text(
                     'THE WATCH IS DOWN ✗ — tap to fix',
-                    style: TextStyle(color: GrudgeColors.paper, fontWeight: FontWeight.w900),
+                    style: TextStyle(color: BonkedColors.paper, fontWeight: FontWeight.w900),
                     textAlign: TextAlign.center,
                   ),
                 ),

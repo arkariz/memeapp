@@ -1,5 +1,5 @@
-name: grudge
-description: "Grudge — a screen-time limiter that roasts you with your own words."
+name: bonked
+description: "Bonked — a screen-time limiter that roasts you with your own words."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

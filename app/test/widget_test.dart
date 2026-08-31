@@ -6,8 +6,8 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:grudge/main.dart';
-import 'package:grudge/src/core/watcher_repository.dart';
+import 'package:bonked/main.dart';
+import 'package:bonked/src/core/watcher_repository.dart';
 
 class _FakeWatcherRepository extends WatcherRepository {
   @override
@@ -16,7 +16,7 @@ class _FakeWatcherRepository extends WatcherRepository {
 
 void main() {
   testWidgets('App boots and shows the welcome screen on first run', (WidgetTester tester) async {
-    await tester.pumpWidget(GrudgeApp(repo: _FakeWatcherRepository()));
+    await tester.pumpWidget(BonkedApp(repo: _FakeWatcherRepository()));
     await tester.pumpAndSettle();
 
     expect(find.text("LET'S GO"), findsOneWidget);

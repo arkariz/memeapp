@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/watcher_repository.dart';
 import '../pigeon/watcher_api.g.dart';
-import '../theme/grudge_theme.dart';
+import '../theme/bonked_theme.dart';
 import 'permission_flow.dart';
 
 /// OB-1: app picker + per-app daily budget. PRD P0-1: "App picker for
@@ -78,7 +78,7 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
   Widget build(BuildContext context) {
     final selectedCount = _selectedBudgets.length;
     return Scaffold(
-      backgroundColor: GrudgeColors.paper,
+      backgroundColor: BonkedColors.paper,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,11 +88,11 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('PICK YOUR\nPOISON.', style: grudgeHeadline(size: 28)),
+                  Text('PICK YOUR\nPOISON.', style: bonkedHeadline(size: 28)),
                   const SizedBox(height: 8),
                   Text(
                     'Which apps eat your evenings? Daily budget next to each.',
-                    style: grudgeBody(),
+                    style: bonkedBody(),
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -111,7 +111,7 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
             ),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: GrudgeColors.ink))
+                  ? const Center(child: CircularProgressIndicator(color: BonkedColors.ink))
                   : ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       itemCount: _filtered.length,
@@ -135,7 +135,7 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
             ),
             Padding(
               padding: const EdgeInsets.all(24),
-              child: GrudgeDarkButton(
+              child: BonkedDarkButton(
                 label: selectedCount == 0 ? 'PICK ONE. YOU KNOW THE ONE.' : 'LOCK IT IN ($selectedCount picked)',
                 onPressed: selectedCount == 0 ? null : _continue,
               ),
@@ -146,7 +146,7 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
               child: Text(
                 'Budgets are editable. The judgment is not.',
                 textAlign: TextAlign.center,
-                style: grudgeBody(size: 13),
+                style: bonkedBody(size: 13),
               ),
             ),
           ],
@@ -178,7 +178,7 @@ class _AppRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
         decoration: hardShadowBox(
-          fill: selected ? GrudgeColors.yellow : GrudgeColors.paper,
+          fill: selected ? BonkedColors.yellow : BonkedColors.paper,
           borderWidth: 2,
           shadowOffset: const Offset(3, 4),
         ),
@@ -195,16 +195,16 @@ class _AppRow extends StatelessWidget {
                       width: 24,
                       height: 24,
                       decoration: BoxDecoration(
-                        color: selected ? GrudgeColors.ink : Colors.transparent,
-                        border: Border.all(color: GrudgeColors.ink, width: 2),
+                        color: selected ? BonkedColors.ink : Colors.transparent,
+                        border: Border.all(color: BonkedColors.ink, width: 2),
                       ),
-                      child: selected ? const Icon(Icons.check, size: 16, color: GrudgeColors.yellow) : null,
+                      child: selected ? const Icon(Icons.check, size: 16, color: BonkedColors.yellow) : null,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         app.label,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: GrudgeColors.ink),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: BonkedColors.ink),
                       ),
                     ),
                   ],
@@ -224,13 +224,13 @@ class _AppRow extends StatelessWidget {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: budgetMin == m ? GrudgeColors.ink : Colors.transparent,
-                                border: Border.all(color: GrudgeColors.ink, width: 2),
+                                color: budgetMin == m ? BonkedColors.ink : Colors.transparent,
+                                border: Border.all(color: BonkedColors.ink, width: 2),
                               ),
                               child: Text(
                                 '${m}M',
                                 style: TextStyle(
-                                  color: budgetMin == m ? GrudgeColors.yellow : GrudgeColors.ink,
+                                  color: budgetMin == m ? BonkedColors.yellow : BonkedColors.ink,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 12,
                                 ),

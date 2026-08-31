@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../theme/grudge_theme.dart';
+import '../theme/bonked_theme.dart';
 
 /// One line of the ✓/✗ checklist under the meme box — [positive] picks the
 /// green check vs. red cross, [text] is the claim itself.
@@ -160,7 +160,7 @@ class _PermissionStepScreenState extends State<PermissionStepScreen> with Widget
     final config = widget.config;
     final recovering = _phase == _StepPhase.stillNotGranted;
     return Scaffold(
-      backgroundColor: GrudgeColors.paper,
+      backgroundColor: BonkedColors.paper,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
@@ -170,10 +170,10 @@ class _PermissionStepScreenState extends State<PermissionStepScreen> with Widget
               if (recovering) ...[
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: hardShadowBox(fill: GrudgeColors.red, borderWidth: 2, shadowOffset: const Offset(3, 4)),
+                  decoration: hardShadowBox(fill: BonkedColors.red, borderWidth: 2, shadowOffset: const Offset(3, 4)),
                   child: const Text(
                     "STILL NOT ENABLED",
-                    style: TextStyle(color: GrudgeColors.paper, fontWeight: FontWeight.w900, fontSize: 13),
+                    style: TextStyle(color: BonkedColors.paper, fontWeight: FontWeight.w900, fontSize: 13),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -181,21 +181,21 @@ class _PermissionStepScreenState extends State<PermissionStepScreen> with Widget
               Text(
                 'BEGGING SEASON · ${config.stepIndex} OF ${config.totalSteps}',
                 style: const TextStyle(
-                  color: GrudgeColors.gray,
+                  color: BonkedColors.gray,
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.5,
                 ),
               ),
               const SizedBox(height: 8),
-              Text(config.title, style: grudgeHeadline(size: 30)),
+              Text(config.title, style: bonkedHeadline(size: 30)),
               const SizedBox(height: 20),
               Container(
                 width: double.infinity,
                 height: 200,
                 margin: EdgeInsets.symmetric(horizontal: 14),
                 clipBehavior: Clip.hardEdge,
-                decoration: hardShadowBox(fill: GrudgeColors.yellow),
+                decoration: hardShadowBox(fill: BonkedColors.yellow),
                 child: Image.asset(
                   config.imageAsset,
                   fit: BoxFit.contain,
@@ -203,16 +203,16 @@ class _PermissionStepScreenState extends State<PermissionStepScreen> with Widget
                     child: Text(
                       'Drop ${config.imageAsset.split('/').last}\ninto assets/onboarding/',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: GrudgeColors.ink, fontWeight: FontWeight.w700, fontSize: 13),
+                      style: const TextStyle(color: BonkedColors.ink, fontWeight: FontWeight.w700, fontSize: 13),
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 20),
               if (recovering)
-                Text(config.recoveryBody, style: grudgeBody(size: 16))
+                Text(config.recoveryBody, style: bonkedBody(size: 16))
               else ...[
-                Text(config.subtitle, style: const TextStyle(color: GrudgeColors.ink, fontSize: 17, fontWeight: FontWeight.w700, height: 1.35)),
+                Text(config.subtitle, style: const TextStyle(color: BonkedColors.ink, fontSize: 17, fontWeight: FontWeight.w700, height: 1.35)),
                 const SizedBox(height: 18),
                 ...config.checklist.map(
                   (line) => Padding(
@@ -223,28 +223,28 @@ class _PermissionStepScreenState extends State<PermissionStepScreen> with Widget
                         Text(
                           line.positive ? '✓' : '✗',
                           style: TextStyle(
-                            color: line.positive ? GrudgeColors.green : GrudgeColors.red,
+                            color: line.positive ? BonkedColors.green : BonkedColors.red,
                             fontWeight: FontWeight.w900,
                             fontSize: 16,
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Expanded(child: Text(line.text, style: grudgeBody(size: 15))),
+                        Expanded(child: Text(line.text, style: bonkedBody(size: 15))),
                       ],
                     ),
                   ),
                 ),
               ],
               const SizedBox(height: 40),
-              GrudgeDarkButton(label: recovering ? 'Try again' : config.ctaLabel, onPressed: _request),
+              BonkedDarkButton(label: recovering ? 'Try again' : config.ctaLabel, onPressed: _request),
               if (config.allowSkip && !recovering) ...[
                 const SizedBox(height: 12),
-                GrudgeLightButton(label: 'Skip for now', onPressed: _skip),
+                BonkedLightButton(label: 'Skip for now', onPressed: _skip),
               ],
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
-                child: Text(config.caption, textAlign: TextAlign.center, style: grudgeBody(size: 13)),
+                child: Text(config.caption, textAlign: TextAlign.center, style: bonkedBody(size: 13)),
               ),
             ],
           ),

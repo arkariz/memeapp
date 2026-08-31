@@ -17,7 +17,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.arkarizdev.grudge"
+    namespace = "com.arkarizdev.bonked"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -27,7 +27,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.arkarizdev.grudge"
+        applicationId = "com.arkarizdev.bonked"
         // Pinned per PRD/tech plan (Android 10+) — not flutter.minSdkVersion's default,
         // this is a deliberate product requirement, not a toolchain default.
         minSdk = 29

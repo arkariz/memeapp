@@ -40,7 +40,7 @@ val posthogApiKey: String = run {
 }
 
 android {
-    namespace = "com.arkarizdev.grudge.core"
+    namespace = "com.arkarizdev.bonked.core"
     compileSdk = 36
 
     defaultConfig {

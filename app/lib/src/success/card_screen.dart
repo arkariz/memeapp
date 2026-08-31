@@ -9,7 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../core/watcher_repository.dart';
 import '../pigeon/watcher_api.g.dart';
-import '../theme/grudge_theme.dart';
+import '../theme/bonked_theme.dart';
 
 /// T-202: the one Flutter-rendered surface with a share affordance in the
 /// whole app — PRD P0-5: "no share affordance on the roast, ever; sharing
@@ -57,7 +57,7 @@ class _CardScreenState extends State<CardScreen> {
       final bytes = byteData.buffer.asUint8List();
 
       final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/grudge_card_${widget.card.referenceId}.png');
+      final file = File('${dir.path}/bonked_card_${widget.card.referenceId}.png');
       await file.writeAsBytes(bytes);
 
       await SharePlus.instance.share(
@@ -79,7 +79,7 @@ class _CardScreenState extends State<CardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GrudgeColors.yellow,
+      backgroundColor: BonkedColors.yellow,
       body: SafeArea(
         child: Stack(
           children: [
@@ -91,7 +91,7 @@ class _CardScreenState extends State<CardScreen> {
                     _eyebrow,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      color: GrudgeColors.ink,
+                      color: BonkedColors.ink,
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.5,
@@ -100,7 +100,7 @@ class _CardScreenState extends State<CardScreen> {
                   const SizedBox(height: 24),
                   RepaintBoundary(key: _cardKey, child: _Card(card: widget.card, isBeaten: _isBeaten, caption: _caption)),
                   const SizedBox(height: 32),
-                  GrudgeDarkButton(
+                  BonkedDarkButton(
                     label: _sharing ? 'RENDERING...' : 'POST MY RESTRAINT',
                     onPressed: _sharing ? null : _share,
                   ),
@@ -108,7 +108,7 @@ class _CardScreenState extends State<CardScreen> {
                   Text(
                     "Wins get a share button. Roasts don't.",
                     textAlign: TextAlign.center,
-                    style: grudgeBody(size: 12, color: GrudgeColors.ink.withValues(alpha: 0.6)),
+                    style: bonkedBody(size: 12, color: BonkedColors.ink.withValues(alpha: 0.6)),
                   ),
                 ],
               ),
@@ -118,7 +118,7 @@ class _CardScreenState extends State<CardScreen> {
               left: 4,
               child: IconButton(
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close, color: GrudgeColors.ink),
+                icon: const Icon(Icons.close, color: BonkedColors.ink),
                 tooltip: 'Dismiss',
               ),
             ),
@@ -146,34 +146,34 @@ class _Card extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            color: GrudgeColors.ink,
+            color: BonkedColors.ink,
             child: const Text(
               'Bonked · CERTIFIED',
-              style: TextStyle(color: GrudgeColors.paper, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+              style: TextStyle(color: BonkedColors.paper, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5),
             ),
           ),
           const SizedBox(height: 16),
           _MemeBox(assetName: isBeaten ? 'beaten' : 'streak'),
           if (isBeaten) ...[
-            Text('SAID ${card.grantedMin} MINUTES.', style: grudgeHeadline(size: 28)),
-            Text('TOOK ${card.takenMin}.', style: grudgeHeadline(size: 28, color: GrudgeColors.green)),
+            Text('SAID ${card.grantedMin} MINUTES.', style: bonkedHeadline(size: 28)),
+            Text('TOOK ${card.takenMin}.', style: bonkedHeadline(size: 28, color: BonkedColors.green)),
           ] else ...[
-            Text('${card.streakCount} DAYS.', style: grudgeHeadline(size: 28)),
-            const Text('IN A ROW.', style: TextStyle(color: GrudgeColors.green, fontSize: 28, fontWeight: FontWeight.w900, height: 1.05)),
+            Text('${card.streakCount} DAYS.', style: bonkedHeadline(size: 28)),
+            const Text('IN A ROW.', style: TextStyle(color: BonkedColors.green, fontSize: 28, fontWeight: FontWeight.w900, height: 1.05)),
           ],
           const SizedBox(height: 12),
-          Text(caption, style: grudgeBody(size: 15)),
+          Text(caption, style: bonkedBody(size: 15)),
           const SizedBox(height: 16),
-          const Divider(color: GrudgeColors.ink, thickness: 1.5, height: 1),
+          const Divider(color: BonkedColors.ink, thickness: 1.5, height: 1),
           const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 '🔥 ${card.streakCount}-DAY STREAK',
-                style: const TextStyle(color: GrudgeColors.ink, fontWeight: FontWeight.w900, fontSize: 14),
+                style: const TextStyle(color: BonkedColors.ink, fontWeight: FontWeight.w900, fontSize: 14),
               ),
-              Text(_formatDate(card.dateIso), style: grudgeBody(size: 13)),
+              Text(_formatDate(card.dateIso), style: bonkedBody(size: 13)),
             ],
           ),
         ],

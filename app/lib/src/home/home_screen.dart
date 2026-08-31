@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/watcher_repository.dart';
 import '../pigeon/watcher_api.g.dart';
 import '../success/card_screen.dart';
-import '../theme/grudge_theme.dart';
+import '../theme/bonked_theme.dart';
 import 'scaffold_check_page.dart';
 import 'watch_down_screen.dart';
 
@@ -86,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final snapshot = _snapshot;
     return Scaffold(
-      backgroundColor: GrudgeColors.paper,
+      backgroundColor: BonkedColors.paper,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -94,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           children: [
             _Header(onSettingsTap: _openDevTools),
             if (snapshot == null)
-              const Expanded(child: Center(child: CircularProgressIndicator(color: GrudgeColors.ink)))
+              const Expanded(child: Center(child: CircularProgressIndicator(color: BonkedColors.ink)))
             else ...[
               _WatchStatusBanner(
                 isUp: snapshot.isRunning && snapshot.hasUsageAccess && snapshot.hasOverlayPermission,
@@ -130,7 +130,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: GrudgeColors.ink,
+      color: BonkedColors.ink,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -140,12 +140,12 @@ class _Header extends StatelessWidget {
               'Bonked — Bro, Put the Phone Down',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: GrudgeColors.paper, fontSize: 22, fontWeight: FontWeight.w900),
+              style: TextStyle(color: BonkedColors.paper, fontSize: 22, fontWeight: FontWeight.w900),
             ),
           ),
           IconButton(
             onPressed: onSettingsTap,
-            icon: const Icon(Icons.settings, color: GrudgeColors.paper),
+            icon: const Icon(Icons.settings, color: BonkedColors.paper),
             tooltip: 'Dev tools',
           ),
         ],
@@ -165,15 +165,15 @@ class _WatchStatusBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final since = watcherStartedAtMs != null ? _formatTimeOfDay(DateTime.fromMillisecondsSinceEpoch(watcherStartedAtMs!)) : null;
     return Material(
-      color: isUp ? GrudgeColors.green : GrudgeColors.red,
+      color: isUp ? BonkedColors.green : BonkedColors.red,
       child: InkWell(
         onTap: isUp ? null : onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: const BoxDecoration(
             border: Border(
-              top: BorderSide(color: GrudgeColors.ink, width: 3),
-              bottom: BorderSide(color: GrudgeColors.ink, width: 3),
+              top: BorderSide(color: BonkedColors.ink, width: 3),
+              bottom: BorderSide(color: BonkedColors.ink, width: 3),
             ),
           ),
           child: Row(
@@ -182,11 +182,11 @@ class _WatchStatusBanner extends StatelessWidget {
               Flexible(
                 child: Text(
                   isUp ? 'THE WATCH IS UP ✓' : 'THE WATCH IS DOWN ✗ — tap to fix',
-                  style: const TextStyle(color: GrudgeColors.ink, fontWeight: FontWeight.w900, fontSize: 15),
+                  style: const TextStyle(color: BonkedColors.ink, fontWeight: FontWeight.w900, fontSize: 15),
                 ),
               ),
               if (isUp && since != null)
-                Text('since $since', style: const TextStyle(color: GrudgeColors.ink, fontSize: 13)),
+                Text('since $since', style: const TextStyle(color: BonkedColors.ink, fontSize: 13)),
             ],
           ),
         ),
@@ -222,15 +222,15 @@ class _StreakSection extends StatelessWidget {
       children: [
         Text(
           '$current',
-          style: const TextStyle(color: GrudgeColors.ink, fontSize: 120, fontWeight: FontWeight.w900, height: 1),
+          style: const TextStyle(color: BonkedColors.ink, fontSize: 120, fontWeight: FontWeight.w900, height: 1),
         ),
         const SizedBox(height: 8),
         const Text(
           'DAY STREAK 🔥',
-          style: TextStyle(color: GrudgeColors.ink, fontSize: 20, fontWeight: FontWeight.w900),
+          style: TextStyle(color: BonkedColors.ink, fontSize: 20, fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 6),
-        Text(caption, style: grudgeBody(size: 14)),
+        Text(caption, style: bonkedBody(size: 14)),
       ],
     );
   }
@@ -248,11 +248,11 @@ class _TodaysDamage extends StatelessWidget {
       children: [
         const Text(
           "TODAY'S DAMAGE",
-          style: TextStyle(color: GrudgeColors.ink, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          style: TextStyle(color: BonkedColors.ink, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1.5),
         ),
         const SizedBox(height: 16),
         if (apps.isEmpty)
-          Text('Nothing watched yet — add apps from onboarding.', style: grudgeBody())
+          Text('Nothing watched yet — add apps from onboarding.', style: bonkedBody())
         else
           for (final app in apps)
             Padding(padding: const EdgeInsets.only(bottom: 20), child: _AppUsageRow(app: app)),
@@ -276,11 +276,11 @@ class _AppUsageRow extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(app.label, style: const TextStyle(color: GrudgeColors.ink, fontSize: 16, fontWeight: FontWeight.w900)),
+            Text(app.label, style: const TextStyle(color: BonkedColors.ink, fontSize: 16, fontWeight: FontWeight.w900)),
             Text(
               over ? '${app.usedMin} / ${app.budgetMin} — OVER' : '${app.usedMin} / ${app.budgetMin} MIN',
               style: TextStyle(
-                color: over ? GrudgeColors.red : GrudgeColors.gray,
+                color: over ? BonkedColors.red : BonkedColors.gray,
                 fontSize: 14,
                 fontWeight: over ? FontWeight.w900 : FontWeight.normal,
               ),
@@ -291,11 +291,11 @@ class _AppUsageRow extends StatelessWidget {
         Container(
           width: double.infinity,
           height: 14,
-          decoration: BoxDecoration(border: Border.all(color: GrudgeColors.ink, width: 2)),
+          decoration: BoxDecoration(border: Border.all(color: BonkedColors.ink, width: 2)),
           child: FractionallySizedBox(
             alignment: Alignment.centerLeft,
             widthFactor: over ? 1.0 : fraction,
-            child: Container(color: over ? GrudgeColors.red : GrudgeColors.yellow),
+            child: Container(color: over ? BonkedColors.red : BonkedColors.yellow),
           ),
         ),
       ],

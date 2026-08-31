@@ -4,16 +4,16 @@ import 'src/core/watcher_repository.dart';
 import 'src/home/home_screen.dart';
 import 'src/onboarding/notification_permission_bridge.dart';
 import 'src/onboarding/welcome_screen.dart';
-import 'src/theme/grudge_theme.dart';
+import 'src/theme/bonked_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   NotificationPermissionBridge.instance.register();
-  runApp(GrudgeApp(repo: WatcherRepository()));
+  runApp(BonkedApp(repo: WatcherRepository()));
 }
 
-class GrudgeApp extends StatelessWidget {
-  const GrudgeApp({super.key, required this.repo});
+class BonkedApp extends StatelessWidget {
+  const BonkedApp({super.key, required this.repo});
 
   final WatcherRepository repo;
 
@@ -42,8 +42,8 @@ class _AppBootstrap extends StatelessWidget {
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Scaffold(
-            backgroundColor: GrudgeColors.paper,
-            body: Center(child: CircularProgressIndicator(color: GrudgeColors.ink)),
+            backgroundColor: BonkedColors.paper,
+            body: Center(child: CircularProgressIndicator(color: BonkedColors.ink)),
           );
         }
         return snapshot.data! ? HomeScreen(repo: repo) : WelcomeScreen(repo: repo);
