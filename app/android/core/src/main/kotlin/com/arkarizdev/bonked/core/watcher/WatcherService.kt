@@ -334,13 +334,20 @@ class WatcherService : Service() {
      * event's own timestamp, not poll-tick `now`, for latency logging —
      * same methodology as the spike (spike/README.md).
      */
-    private fun maybeShowIntentOverlay(pkg: String, eventTs: Long) {
+    private suspend fun maybeShowIntentOverlay(pkg: String, eventTs: Long) {
         if (sessionStateMachine.snapshot(pkg)?.state != SessionState.INTENT_PENDING) return
         if (!Settings.canDrawOverlays(this)) {
             Log.w(TAG, "pkg=$pkg wants intent overlay but SYSTEM_ALERT_WINDOW not granted")
             return
         }
-        intentOverlay.show(pkg, eventTs) { minutes, intentText ->
+        // T-104 budget-warning: the daily budgetMin set at onboarding/
+        // app-picker time is a separate number from the per-session
+        // minutes picked here — surfacing both lets the overlay warn when
+        // the picked session would blow past today's budget instead of
+        // silently letting the two drift apart with no feedback.
+        val budgetMin = db.watchedAppDao().findByPkg(pkg)?.budgetMin ?: 0
+        val usedMinToday = WatcherCore.usedMinutesTodayFor(applicationContext, pkg, eventTs)
+        intentOverlay.show(pkg, eventTs, budgetMin, usedMinToday) { minutes, intentText ->
             val now = System.currentTimeMillis()
             val ok = sessionStateMachine.grant(pkg, minutes, intentText, now)
             Log.i(TAG, "grant pkg=$pkg minutes=$minutes ok=$ok")

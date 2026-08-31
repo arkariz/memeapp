@@ -230,6 +230,22 @@ object WatcherCore {
         )
     }
 
+    /**
+     * T-104 budget-warning: same today-so-far calculation as
+     * [getHomeSnapshot]'s per-app rows, for one pkg on demand — used right
+     * before the intent overlay shows, so it can warn when the session
+     * length about to be picked would push today's total over budgetMin.
+     */
+    suspend fun usedMinutesTodayFor(context: Context, pkg: String, now: Long = System.currentTimeMillis()): Int {
+        val db = BonkedDatabase.get(context)
+        val zone = ZoneId.systemDefault()
+        val today = DayBoundary.isoDate(now, zone)
+        val startOfDay = DayBoundary.startOfDayMs(today, zone)
+        val endOfDay = DayBoundary.endOfDayMs(today, zone)
+        val sessions = db.sessionDao().sessionsOverlapping(pkg, startOfDay, endOfDay)
+        return usedMinutesToday(sessions, now, startOfDay, endOfDay)
+    }
+
     /** Clamps each session to [startOfDay, min(endOfDay, now)) before summing — a session opened before midnight or still active must not count minutes outside today. */
     private fun usedMinutesToday(sessions: List<SessionEntity>, now: Long, startOfDay: Long, endOfDay: Long): Int {
         var totalMs = 0L

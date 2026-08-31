@@ -28,6 +28,10 @@ interface WatchedAppDao {
     @Query("SELECT * FROM watched_app WHERE enabled = 1")
     suspend fun enabled(): List<WatchedAppEntity>
 
+    /** T-104 budget-warning: looked up right before showing the intent overlay, to compare against the session length the user is about to pick. */
+    @Query("SELECT * FROM watched_app WHERE pkg = :pkg LIMIT 1")
+    suspend fun findByPkg(pkg: String): WatchedAppEntity?
+
     @Query("SELECT * FROM watched_app")
     suspend fun all(): List<WatchedAppEntity>
 
