@@ -13,9 +13,15 @@ import 'permission_flow.dart';
 /// onboarding (e.g. from a future revocation-recovery flow) doesn't wipe a
 /// prior selection.
 class AppPickerScreen extends StatefulWidget {
-  const AppPickerScreen({super.key, required this.repo});
+  const AppPickerScreen({super.key, required this.repo, this.editMode = false});
 
   final WatcherRepository repo;
+
+  /// True when reached from Home's "manage apps" entry point (post-onboarding
+  /// edit) rather than the first-run flow: saves and pops back to Home
+  /// instead of continuing into PermissionFlow, and shows a way back out
+  /// without saving.
+  final bool editMode;
 
   @override
   State<AppPickerScreen> createState() => _AppPickerScreenState();
@@ -71,7 +77,11 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
         .toList();
     await widget.repo.saveWatchedApps(toSave);
     if (!mounted) return;
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => PermissionFlow(repo: widget.repo)));
+    if (widget.editMode) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => PermissionFlow(repo: widget.repo)));
+    }
   }
 
   @override
@@ -88,6 +98,14 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (widget.editMode)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: const Icon(Icons.arrow_back, color: BonkedColors.ink),
+                      ),
+                    ),
                   Text('PICK YOUR\nPOISON.', style: bonkedHeadline(size: 28)),
                   const SizedBox(height: 8),
                   Text(
@@ -136,8 +154,10 @@ class _AppPickerScreenState extends State<AppPickerScreen> {
             Padding(
               padding: const EdgeInsets.all(24),
               child: BonkedDarkButton(
-                label: selectedCount == 0 ? 'PICK ONE. YOU KNOW THE ONE.' : 'LOCK IT IN ($selectedCount picked)',
-                onPressed: selectedCount == 0 ? null : _continue,
+                label: selectedCount == 0
+                    ? (widget.editMode ? 'SAVE (WATCHING NOTHING)' : 'PICK ONE. YOU KNOW THE ONE.')
+                    : (widget.editMode ? 'SAVE ($selectedCount picked)' : 'LOCK IT IN ($selectedCount picked)'),
+                onPressed: selectedCount == 0 && !widget.editMode ? null : _continue,
               ),
             ),
             const SizedBox(height: 10),

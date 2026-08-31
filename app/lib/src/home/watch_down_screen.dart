@@ -8,7 +8,7 @@ import '../theme/bonked_theme.dart';
 
 /// T-110 recovery screen (matches the ERR-1 Figma concept: full red
 /// background, diagnosis card, "RESURRECT THE WATCH" CTA). Reached from
-/// ScaffoldCheckPage's red banner. Reuses the exact PermissionStepScreen
+/// HomeScreen's red banner. Reuses the exact PermissionStepScreen
 /// built for onboarding — permission_step_screen.dart's own doc comment
 /// flagged this as the intended reuse case back in T-109.
 class WatchDownScreen extends StatefulWidget {

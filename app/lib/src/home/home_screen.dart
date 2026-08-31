@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../core/watcher_repository.dart';
+import '../onboarding/app_picker_screen.dart';
 import '../pigeon/watcher_api.g.dart';
 import '../success/card_screen.dart';
 import '../theme/bonked_theme.dart';
-import 'scaffold_check_page.dart';
 import 'watch_down_screen.dart';
 
-/// T-201: the real post-onboarding landing screen (Figma 05), replacing
-/// ScaffoldCheckPage in that role — that screen still exists as a dev-tools
-/// page (Query WatcherCore / Start watcher / Debug grant), reachable via the
-/// settings gear here rather than deleted, since nothing else exposes those
-/// affordances yet.
+/// T-201: the real post-onboarding landing screen (Figma 05).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.repo});
 
@@ -40,8 +36,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Same T-110 reasoning as ScaffoldCheckPage: catch a watcher that died
-    // (or a new day's streak/usage numbers) on every resume, not just once.
+    // T-110 reasoning: catch a watcher that died (or a new day's
+    // streak/usage numbers) on every resume, not just once.
     if (state == AppLifecycleState.resumed) {
       _refresh();
       _checkForPendingCard();
@@ -77,8 +73,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await _refresh();
   }
 
-  Future<void> _openDevTools() async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ScaffoldCheckPage(repo: widget.repo)));
+  Future<void> _openManageApps() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AppPickerScreen(repo: widget.repo, editMode: true)),
+    );
     await _refresh();
   }
 
@@ -92,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Header(onSettingsTap: _openDevTools),
+            _Header(onSettingsTap: _openManageApps),
             if (snapshot == null)
               const Expanded(child: Center(child: CircularProgressIndicator(color: BonkedColors.ink)))
             else ...[
@@ -146,7 +144,7 @@ class _Header extends StatelessWidget {
           IconButton(
             onPressed: onSettingsTap,
             icon: const Icon(Icons.settings, color: BonkedColors.paper),
-            tooltip: 'Dev tools',
+            tooltip: 'Manage apps',
           ),
         ],
       ),
@@ -252,7 +250,7 @@ class _TodaysDamage extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         if (apps.isEmpty)
-          Text('Nothing watched yet — add apps from onboarding.', style: bonkedBody())
+          Text('Nothing watched yet — tap the gear to add apps.', style: bonkedBody())
         else
           for (final app in apps)
             Padding(padding: const EdgeInsets.only(bottom: 20), child: _AppUsageRow(app: app)),

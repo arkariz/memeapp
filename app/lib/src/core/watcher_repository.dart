@@ -4,7 +4,7 @@ import '../pigeon/watcher_api.g.dart';
 
 /// Single seam between UI and the native watcher platform channel.
 /// Screens previously each did `final _api = WatcherHostApi();`
-/// independently (app_picker_screen, permission_flow, scaffold_check_page)
+/// independently (app_picker_screen, permission_flow, ...)
 /// — this replaces that with one instance, constructed once in main.dart
 /// and passed down via constructor, so there's one place to fake for
 /// widget tests and one place to see everything the UI can ask the
