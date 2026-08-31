@@ -110,7 +110,7 @@ class SessionStateMachine {
                 session.endingSince = now
                 Log.i(TAG, "pkg=$pkg RUNNING -> ENDING (grace started)")
             }
-            SessionState.ROASTING -> finalizeSession(session, now, exceededBudget = true)
+            SessionState.ROASTING -> finalizeSession(session, now, exceededBudget = true, roastShown = true)
             SessionState.INTENT_PENDING -> {
                 session.state = SessionState.IDLE
                 Log.i(TAG, "pkg=$pkg INTENT_PENDING -> IDLE (abandoned, no grant)")
@@ -146,11 +146,19 @@ class SessionStateMachine {
      * ROASTING -> IDLE immediately, triggered by the user tapping "I'm
      * done." No grace window (see SessionState.kt) — an explicit tap is
      * unambiguous, unlike an app-switch.
+     *
+     * exceededBudget = false: reaching ROASTING always means the granted
+     * time is technically up, but finalizeSession already treats any
+     * extension as disqualifying (session.extensions > 0 -> EXTENDED,
+     * checked before exceededBudget). So for a session that was never
+     * extended, an explicit "I'm done" tap is the same voluntary stop as
+     * the RUNNING early-exit path — it should finalize BEATEN, not
+     * OVERAGE, and be eligible for the success card.
      */
     fun markDone(pkg: String, now: Long): Boolean {
         val session = sessions[pkg] ?: return false
         if (session.state != SessionState.ROASTING) return false
-        finalizeSession(session, now, exceededBudget = true)
+        finalizeSession(session, now, exceededBudget = false, roastShown = true)
         return true
     }
 
@@ -176,7 +184,7 @@ class SessionStateMachine {
                         // Reached ENDING only via the RUNNING early-exit path
                         // (see onAppLeft) — they left before expiry, and the
                         // grace window just confirmed it wasn't a flicker.
-                        finalizeSession(session, now, exceededBudget = false)
+                        finalizeSession(session, now, exceededBudget = false, roastShown = false)
                     }
                 }
                 else -> Unit
@@ -191,7 +199,7 @@ class SessionStateMachine {
      * you've asked for more time, you're not eligible for beaten even if
      * you end up finishing early against the new deadline.
      */
-    private fun finalizeSession(session: Session, now: Long, exceededBudget: Boolean) {
+    private fun finalizeSession(session: Session, now: Long, exceededBudget: Boolean, roastShown: Boolean) {
         val outcome = when {
             session.extensions > 0 -> SessionOutcome.EXTENDED
             exceededBudget -> SessionOutcome.OVERAGE
@@ -203,7 +211,7 @@ class SessionStateMachine {
         } else {
             null
         }
-        finishedSessions.add(FinishedSession(session.pkg, now, outcome, overageS, session.extensions))
+        finishedSessions.add(FinishedSession(session.pkg, now, outcome, overageS, session.extensions, roastShown))
         Log.i(TAG, "pkg=${session.pkg} finalized outcome=$outcome overageS=$overageS extensions=${session.extensions}")
 
         session.state = SessionState.IDLE

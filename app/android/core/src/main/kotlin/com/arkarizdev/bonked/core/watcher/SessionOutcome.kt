@@ -20,4 +20,13 @@ data class FinishedSession(
     val outcome: SessionOutcome,
     val overageS: Int?,
     val extensions: Int,
+    /**
+     * True if this session actually reached ROASTING (the overlay was
+     * shown) before finalizing — via markDone or an app-switch away while
+     * ROASTING. False for the RUNNING->ENDING grace-timeout path, where
+     * the user left before expiry and the roast never appeared. Outcome
+     * alone can't distinguish these anymore: a markDone tap with no prior
+     * extension now finalizes BEATEN too, even though the roast WAS shown.
+     */
+    val roastShown: Boolean,
 )

@@ -334,13 +334,20 @@ class WatcherService : Service() {
      * event's own timestamp, not poll-tick `now`, for latency logging —
      * same methodology as the spike (spike/README.md).
      */
-    private fun maybeShowIntentOverlay(pkg: String, eventTs: Long) {
+    private suspend fun maybeShowIntentOverlay(pkg: String, eventTs: Long) {
         if (sessionStateMachine.snapshot(pkg)?.state != SessionState.INTENT_PENDING) return
         if (!Settings.canDrawOverlays(this)) {
             Log.w(TAG, "pkg=$pkg wants intent overlay but SYSTEM_ALERT_WINDOW not granted")
             return
         }
-        intentOverlay.show(pkg, eventTs) { minutes, intentText ->
+        // T-104 budget-warning: the daily budgetMin set at onboarding/
+        // app-picker time is a separate number from the per-session
+        // minutes picked here — surfacing both lets the overlay warn when
+        // the picked session would blow past today's budget instead of
+        // silently letting the two drift apart with no feedback.
+        val budgetMin = db.watchedAppDao().findByPkg(pkg)?.budgetMin ?: 0
+        val usedMinToday = WatcherCore.usedMinutesTodayFor(applicationContext, pkg, eventTs)
+        intentOverlay.show(pkg, eventTs, budgetMin, usedMinToday) { minutes, intentText ->
             val now = System.currentTimeMillis()
             val ok = sessionStateMachine.grant(pkg, minutes, intentText, now)
             Log.i(TAG, "grant pkg=$pkg minutes=$minutes ok=$ok")
@@ -469,17 +476,24 @@ class WatcherService : Service() {
                 mapOf("outcome" to finished.outcome.name, "overage_s" to finished.overageS),
             )
             // T-203: roast_outcome is only meaningful once a roast was
-            // actually shown — BEATEN sessions never reach ROASTING, so
-            // "how did the roast interaction resolve" is undefined for
-            // them; firing it anyway would corrupt the P0-6 first-roast-
-            // stop-rate tripwire this field directly feeds.
-            if (finished.outcome != SessionOutcome.BEATEN) {
+            // actually shown. A markDone tap with no prior extension now
+            // finalizes BEATEN (see SessionStateMachine.markDone), so
+            // outcome alone no longer tells us that — roastShown does:
+            // true for markDone/onAppLeft-while-ROASTING, false for the
+            // RUNNING->ENDING grace-timeout path where the roast never
+            // appeared. Firing this for that path would corrupt the P0-6
+            // first-roast-stop-rate tripwire this field directly feeds.
+            if (finished.roastShown) {
                 val secsToAction = ((finished.endedAt - existing.expiryAt) / 1000).coerceAtLeast(0)
                 AnalyticsCore.logEvent(
                     applicationContext,
                     "roast_outcome",
                     mapOf(
-                        "outcome" to if (finished.outcome == SessionOutcome.EXTENDED) "extended" else "stopped",
+                        "outcome" to when (finished.outcome) {
+                            SessionOutcome.EXTENDED -> "extended"
+                            SessionOutcome.BEATEN -> "stopped"
+                            SessionOutcome.OVERAGE -> "stopped"
+                        },
                         "secs_to_action" to secsToAction,
                     ),
                 )

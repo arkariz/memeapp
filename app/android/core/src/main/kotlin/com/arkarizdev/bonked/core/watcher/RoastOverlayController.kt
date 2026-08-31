@@ -1,6 +1,7 @@
 package com.arkarizdev.bonked.core.watcher
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.ImageDecoder
@@ -220,8 +221,17 @@ class RoastOverlayController(private val context: Context) {
             isAllCaps = true
             setOnClickListener {
                 Log.i(TAG, "DONE tapped pkg=$pkg")
+                // Go home both before and after tearing down the overlay:
+                // the roast window sits above the target app, so a single
+                // HOME intent can race the removeView() below and land
+                // while the overlay still owns focus, leaving the target
+                // app foregrounded instead of actually closing. Firing it
+                // on both sides of the dismiss makes "FINE. I'M DONE."
+                // reliably kick the user back to the home screen.
+                goToHomeScreen()
                 onDone()
                 dismissViewOnMainThread()
+                goToHomeScreen()
             }
         }, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
@@ -572,6 +582,20 @@ class RoastOverlayController(private val context: Context) {
             setTextColor(COLOR_GRAY)
             textSize = 10f
             setPadding(0, 0, 0, dp(12))
+        }
+    }
+
+    /** Sends the user to the home screen — used by "FINE. I'M DONE." to actually close the roasted app, not just clear the overlay. */
+    private fun goToHomeScreen() {
+        try {
+            context.startActivity(
+                Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                },
+            )
+        } catch (t: Exception) {
+            Log.w(TAG, "goToHomeScreen failed", t)
         }
     }
 

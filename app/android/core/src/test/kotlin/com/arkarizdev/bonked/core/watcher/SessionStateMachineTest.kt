@@ -105,13 +105,27 @@ class SessionStateMachineTest {
     }
 
     @Test
-    fun `markDone with no extensions finalizes OVERAGE with seconds-over`() {
+    fun `markDone with no extensions finalizes BEATEN, not OVERAGE`() {
         val sm = SessionStateMachine()
         sm.onAppForegrounded(pkg, t0)
         sm.grant(pkg, minutes = 5, intentText = null, now = t0)
         sm.tick(t0 + 5 * 60_000L) // -> ROASTING at exactly expiry
 
         sm.markDone(pkg, now = t0 + 5 * 60_000L + 12_000L) // 12s after expiry
+        val finished = sm.drainFinishedSessions()
+        assertEquals(1, finished.size)
+        assertEquals(SessionOutcome.BEATEN, finished[0].outcome)
+        assertNull(finished[0].overageS)
+    }
+
+    @Test
+    fun `app leaving ROASTING without a done tap still finalizes OVERAGE`() {
+        val sm = SessionStateMachine()
+        sm.onAppForegrounded(pkg, t0)
+        sm.grant(pkg, minutes = 5, intentText = null, now = t0)
+        sm.tick(t0 + 5 * 60_000L) // -> ROASTING at exactly expiry
+
+        sm.onAppLeft(pkg, now = t0 + 5 * 60_000L + 12_000L) // walked away instead of tapping done
         val finished = sm.drainFinishedSessions()
         assertEquals(1, finished.size)
         assertEquals(SessionOutcome.OVERAGE, finished[0].outcome)

@@ -43,6 +43,7 @@ class IntentOverlayController(private val context: Context) {
         private const val COLOR_PAPER = 0xFFFFFFFF.toInt()
         private const val COLOR_YELLOW = 0xFFFFE600.toInt()
         private const val COLOR_GRAY = 0xFF6B6B6B.toInt()
+        private const val COLOR_RED = 0xFFFF2E00.toInt()
     }
 
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -68,13 +69,25 @@ class IntentOverlayController(private val context: Context) {
      * Dispatchers.Default, so the actual view work is marshaled onto the
      * main thread here rather than requiring every caller to know that.
      */
-    fun show(pkg: String, eventTs: Long, onGrant: (minutes: Int, intentText: String?) -> Unit) {
+    fun show(
+        pkg: String,
+        eventTs: Long,
+        budgetMin: Int,
+        usedMinToday: Int,
+        onGrant: (minutes: Int, intentText: String?) -> Unit,
+    ) {
         if (shownForPkg == pkg) return
         shownForPkg = pkg // set immediately so a second poll tick can't double-post
-        mainHandler.post { showOnMainThread(pkg, eventTs, onGrant) }
+        mainHandler.post { showOnMainThread(pkg, eventTs, budgetMin, usedMinToday, onGrant) }
     }
 
-    private fun showOnMainThread(pkg: String, eventTs: Long, onGrant: (minutes: Int, intentText: String?) -> Unit) {
+    private fun showOnMainThread(
+        pkg: String,
+        eventTs: Long,
+        budgetMin: Int,
+        usedMinToday: Int,
+        onGrant: (minutes: Int, intentText: String?) -> Unit,
+    ) {
         removeCurrentViewOnMainThread() // NOT dismissViewOnMainThread() — see its doc comment; this was T-106's live-caught flicker bug, fixed here too for the same reason
 
         var selectedMinutes = DEFAULT_MINUTES
@@ -101,6 +114,28 @@ class IntentOverlayController(private val context: Context) {
         })
 
         val chipRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+
+        // T-104 budget-warning: budgetMin (set once, at onboarding/app-picker
+        // time) and the minutes picked here are two separate numbers — this
+        // line is the only place that ties them together, so the user sees
+        // when a session choice would blow past today's budget instead of
+        // the two silently drifting apart with no feedback at all.
+        val budgetWarning = TextView(context).apply {
+            setTextColor(COLOR_RED)
+            textSize = 13f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            visibility = View.GONE
+        }
+        fun refreshBudgetWarning() {
+            val overBy = usedMinToday + selectedMinutes - budgetMin
+            if (budgetMin > 0 && overBy > 0) {
+                budgetWarning.text = "⚠️ THAT'S ${overBy} MIN OVER TODAY'S $budgetMin MIN BUDGET FOR ${appLabel(pkg).uppercase()}."
+                budgetWarning.visibility = View.VISIBLE
+            } else {
+                budgetWarning.visibility = View.GONE
+            }
+        }
+
         for ((i, minutes) in DURATION_OPTIONS.withIndex()) {
             val chip = Button(context).apply {
                 text = "${minutes}M"
@@ -110,6 +145,7 @@ class IntentOverlayController(private val context: Context) {
                 setOnClickListener {
                     selectedMinutes = minutes
                     chipViews.forEach { (m, v) -> v.background = chipBackground(m == selectedMinutes) }
+                    refreshBudgetWarning()
                 }
             }
             chipViews[minutes] = chip
@@ -119,7 +155,12 @@ class IntentOverlayController(private val context: Context) {
         }
         root.addView(chipRow, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = dp(20) })
+        ).apply { bottomMargin = dp(8) })
+
+        root.addView(budgetWarning, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(12) })
+        refreshBudgetWarning() // reflects the DEFAULT_MINUTES chip pre-selected above
 
         val excuseField = EditText(context).apply {
             hint = "Your excuse (optional)"
