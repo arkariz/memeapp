@@ -99,11 +99,12 @@ class IntentOverlayController(private val context: Context) {
             "Crafting your own narrative. We respect the art.",
         )
 
-        // T-104: the field is never allowed to end up blank (see
-        // DEFAULT_EXCUSE and the focus-loss/START fallbacks below) — but
-        // the user can still backspace their way to empty mid-edit, and
-        // when they do, this reacts to THAT instead of silently letting
-        // it happen. Picked at random each time the field goes empty.
+        // T-104: reused in two places — live, while the free-text field
+        // is empty mid-edit (a caption, doesn't block anything), and as
+        // the confirmation prompt when START is tapped with free text
+        // active and empty (does block the first tap — see the START
+        // click handler's emptyConfirmPending logic). Picked at random
+        // each time.
         private val EXCUSE_EMPTY_ROASTS = listOf(
             "Nothing? Not even a bad excuse?",
             "Silence isn't an excuse. Try again.",
@@ -273,15 +274,19 @@ class IntentOverlayController(private val context: Context) {
             LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { bottomMargin = dp(8) })
 
-        // Nudges the user into a roast either way, without a hard
-        // requirement: tapping a chip fills the field with a pre-written
-        // self-roasting excuse (still editable after), and typing a custom
-        // one is fair game too — either path means whatever ends up in
-        // this field is the user roasting themselves, on the record,
-        // before the session even starts.
+        // Chip and free text are mutually exclusive excuse sources, not
+        // "tap fills the field": picking a chip selects it (highlighted)
+        // and clears the field back to its hint, so it's obvious the chip
+        // is what's active; typing anything in the field deselects
+        // whatever chip was picked. Either way, whatever ends up active
+        // is the user roasting themselves, on the record, before the
+        // session even starts.
         val excuseChipViews = mutableMapOf<String, TextView>()
+        var selectedChipExcuse: String? = DEFAULT_EXCUSE // pre-selected; see the chip loop below
+        var emptyConfirmPending = false // see START's click handler
         var suppressChipSync = false
         var excuseFieldRef: EditText? = null // assigned once excuseField is built below; chip taps only fire after that
+        var typedExcuseRoastRef: TextView? = null // assigned once typedExcuseRoast is built below, same reason
         // FlowLayout, not a HorizontalScrollView: 10 chips of varying width
         // scrolled off-screen sideways with no visual hint there was more
         // — wrapping onto new lines keeps every option visible up front.
@@ -295,13 +300,15 @@ class IntentOverlayController(private val context: Context) {
                 setTextColor(COLOR_INK)
                 textSize = 12f
                 setPadding(dp(12), dp(8), dp(12), dp(8))
-                background = chipBackground(false)
+                background = chipBackground(excuse == DEFAULT_EXCUSE)
                 setOnClickListener {
+                    selectedChipExcuse = excuse
+                    emptyConfirmPending = false
                     suppressChipSync = true
-                    excuseFieldRef?.setText(excuse)
-                    excuseFieldRef?.setSelection(excuse.length)
+                    excuseFieldRef?.setText("") // back to the hint, per point 1 — the chip is what's active now, not the field
                     suppressChipSync = false
                     excuseChipViews.forEach { (e, v) -> v.background = chipBackground(e == excuse) }
+                    typedExcuseRoastRef?.visibility = View.GONE
                 }
             }
             excuseChipViews[excuse] = chip
@@ -320,6 +327,7 @@ class IntentOverlayController(private val context: Context) {
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             visibility = View.GONE
         }
+        typedExcuseRoastRef = typedExcuseRoast
         var wasCustomTyping = false
         var lastGenericRoast: String? = null
         fun keywordRoastFor(text: String): String? {
@@ -341,29 +349,26 @@ class IntentOverlayController(private val context: Context) {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
                 override fun afterTextChanged(s: Editable?) {
-                    // Manually editing away from a selected chip's exact
-                    // text un-highlights it — the chip row reflects what's
-                    // actually in the field, not a stale last tap.
                     if (suppressChipSync) return
-                    val text = s?.toString().orEmpty()
-                    excuseChipViews.forEach { (e, v) -> v.background = chipBackground(e == text) }
+                    // Any real (user-driven) edit means free text is now
+                    // the active source — deselect whatever chip was
+                    // picked (including the default), and any pending
+                    // "tap again to go empty" confirm no longer applies
+                    // to this fresh attempt.
+                    if (selectedChipExcuse != null) {
+                        selectedChipExcuse = null
+                        excuseChipViews.values.forEach { it.background = chipBackground(false) }
+                    }
+                    emptyConfirmPending = false
 
+                    val text = s?.toString().orEmpty()
                     if (text.isEmpty()) {
-                        // The field isn't allowed to stay blank (see
-                        // DEFAULT_EXCUSE / the focus-loss and START
-                        // fallbacks below), but it can be *reached*
-                        // mid-edit — react to that attempt instead of
-                        // quietly doing nothing.
+                        // Reacts to the attempt live, but doesn't block it
+                        // — START's click handler is what actually gates
+                        // submitting with no excuse (point 2).
                         wasCustomTyping = false
                         typedExcuseRoast.text = "✍️ ${EXCUSE_EMPTY_ROASTS.random()}"
                         typedExcuseRoast.visibility = View.VISIBLE
-                        return
-                    }
-                    if (EXCUSE_CHIPS.contains(text)) {
-                        // An exact chip pick (even if reached by typing it
-                        // out by hand) — nothing custom to react to yet.
-                        wasCustomTyping = false
-                        typedExcuseRoast.visibility = View.GONE
                         return
                     }
                     val keywordRoast = keywordRoastFor(text)
@@ -382,27 +387,8 @@ class IntentOverlayController(private val context: Context) {
                     typedExcuseRoast.visibility = View.VISIBLE
                 }
             })
-            // Belt-and-suspenders against the field settling on blank:
-            // the TextWatcher above already roasts a mid-edit empty
-            // state, but on losing focus (keyboard dismissed, tapped
-            // elsewhere) with nothing typed, snap back to DEFAULT_EXCUSE
-            // rather than leaving it blank. START's own click handler
-            // below has the same fallback for the case where START is
-            // tapped without a focus-loss ever firing first.
-            setOnFocusChangeListener { _, hasFocus ->
-                if (!hasFocus && text.isNullOrBlank()) {
-                    setText(DEFAULT_EXCUSE)
-                    setSelection(DEFAULT_EXCUSE.length)
-                }
-            }
         }
         excuseFieldRef = excuseField
-        // Pre-select DEFAULT_EXCUSE now that the watcher is attached, so
-        // this fires the same afterTextChanged path a chip tap would —
-        // the matching chip highlights itself via the existing sync logic
-        // above, no separate highlighting code needed here.
-        excuseField.setText(DEFAULT_EXCUSE)
-        excuseField.setSelection(DEFAULT_EXCUSE.length)
         root.addView(excuseField, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { bottomMargin = dp(8) })
@@ -419,15 +405,39 @@ class IntentOverlayController(private val context: Context) {
             setBackgroundColor(COLOR_INK)
             isAllCaps = true
             setOnClickListener {
-                // Same DEFAULT_EXCUSE fallback as the focus-loss handler
-                // above, for the path where START is tapped directly
-                // without the field ever losing focus first (e.g. the IME
-                // action button) — the excuse text is no longer optional,
-                // so this must never pass null/blank to onGrant.
-                val text = excuseField.text?.toString()?.trim().takeUnless { it.isNullOrEmpty() } ?: DEFAULT_EXCUSE
-                Log.i(TAG, "START tapped pkg=$pkg minutes=$selectedMinutes text=$text")
-                onGrant(selectedMinutes, text)
-                dismissViewOnMainThread() // already on the main thread — this is a click listener
+                val chipExcuse = selectedChipExcuse
+                val typedExcuse = excuseField.text?.toString()?.trim().takeUnless { it.isNullOrEmpty() }
+                when {
+                    // A chip is active (the default, or an explicit pick)
+                    // — always a real excuse, no confirmation needed.
+                    chipExcuse != null -> {
+                        Log.i(TAG, "START tapped pkg=$pkg minutes=$selectedMinutes text=$chipExcuse source=chip")
+                        onGrant(selectedMinutes, chipExcuse)
+                        dismissViewOnMainThread()
+                    }
+                    // Free text is active and has something in it.
+                    typedExcuse != null -> {
+                        Log.i(TAG, "START tapped pkg=$pkg minutes=$selectedMinutes text=$typedExcuse source=typed")
+                        onGrant(selectedMinutes, typedExcuse)
+                        dismissViewOnMainThread()
+                    }
+                    // Free text is active but empty (point 2): first tap
+                    // roasts and refuses to submit — the user has to mean
+                    // it. Doesn't dismiss the overlay.
+                    !emptyConfirmPending -> {
+                        emptyConfirmPending = true
+                        typedExcuseRoast.text = "⚠️ ${EXCUSE_EMPTY_ROASTS.random()} TAP START AGAIN TO GO WITH NO EXCUSE."
+                        typedExcuseRoast.visibility = View.VISIBLE
+                        Log.i(TAG, "START tapped pkg=$pkg with empty excuse — awaiting confirm")
+                    }
+                    // Second tap with the roast already showing: they mean
+                    // it, proceed with no excuse.
+                    else -> {
+                        Log.i(TAG, "START tapped pkg=$pkg minutes=$selectedMinutes text=<empty, confirmed>")
+                        onGrant(selectedMinutes, null)
+                        dismissViewOnMainThread()
+                    }
+                }
             }
         })
 
