@@ -60,6 +60,13 @@ class IntentOverlayController(private val context: Context) {
             "Purely a tactical retreat.",
         )
 
+        // T-104: the field starts pre-filled with this one (chip
+        // highlighted, text set) rather than empty — there's no
+        // "uncheck" affordance on a chip, only switching to a different
+        // chip or overwriting the text by hand. Must be an exact string
+        // from EXCUSE_CHIPS above, or the default won't highlight.
+        private const val DEFAULT_EXCUSE = "My hands did this automatically."
+
         // T-104 typed-excuse roast: reacts live to what the user types in
         // the free-text field, once it stops matching a chip. No on-device
         // LLM/NLP exists here, so "reacting to what they typed" means
@@ -354,6 +361,12 @@ class IntentOverlayController(private val context: Context) {
             })
         }
         excuseFieldRef = excuseField
+        // Pre-select DEFAULT_EXCUSE now that the watcher is attached, so
+        // this fires the same afterTextChanged path a chip tap would —
+        // the matching chip highlights itself via the existing sync logic
+        // above, no separate highlighting code needed here.
+        excuseField.setText(DEFAULT_EXCUSE)
+        excuseField.setSelection(DEFAULT_EXCUSE.length)
         root.addView(excuseField, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { bottomMargin = dp(8) })
