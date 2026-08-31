@@ -6,7 +6,9 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
+import android.text.Editable
 import android.text.InputFilter
+import android.text.TextWatcher
 import android.util.Log
 import android.view.Gravity
 import android.view.KeyEvent
@@ -14,6 +16,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -40,6 +43,19 @@ class IntentOverlayController(private val context: Context) {
         private const val INTENT_TEXT_MAX_LEN = 80 // PRD P0-2: shield-subtitle budget
         private val DURATION_OPTIONS = listOf(5, 10, 15, 30)
         private const val DEFAULT_MINUTES = 10
+
+        // T-104 excuse chips: pre-written self-roasting excuses (TONE_GUIDE.md
+        // rules apply — action, not person). PLACEHOLDER COPY — swap for the
+        // real pack once written; see the copywriting prompt in the PR
+        // description for how these were briefed.
+        private val EXCUSE_CHIPS = listOf(
+            "Just checking one thing.",
+            "Five minutes, tops.",
+            "Research purposes only.",
+            "Emotional support scrolling.",
+            "I have a plan. Trust me.",
+            "No reason. Just vibes.",
+        )
 
         private const val COLOR_INK = 0xFF0D0D0D.toInt()
         private const val COLOR_PAPER = 0xFFFFFFFF.toInt()
@@ -192,15 +208,75 @@ class IntentOverlayController(private val context: Context) {
         ).apply { bottomMargin = dp(12) })
         refreshBudgetWarning() // reflects the DEFAULT_MINUTES chip pre-selected above
 
+        root.addView(TextView(context).apply {
+            text = "WHY, THOUGH? (PICK ONE OR WRITE YOUR OWN)"
+            setTextColor(COLOR_GRAY)
+            textSize = 11f
+            letterSpacing = 0.08f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(8) })
+
+        // Nudges the user into a roast either way, without a hard
+        // requirement: tapping a chip fills the field with a pre-written
+        // self-roasting excuse (still editable after), and typing a custom
+        // one is fair game too — either path means whatever ends up in
+        // this field is the user roasting themselves, on the record,
+        // before the session even starts.
+        val excuseChipViews = mutableMapOf<String, TextView>()
+        var suppressChipSync = false
+        var excuseFieldRef: EditText? = null // assigned once excuseField is built below; chip taps only fire after that
+        val excuseChipRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+        for ((i, excuse) in EXCUSE_CHIPS.withIndex()) {
+            val chip = TextView(context).apply {
+                text = excuse
+                setTextColor(COLOR_INK)
+                textSize = 12f
+                setPadding(dp(12), dp(8), dp(12), dp(8))
+                background = chipBackground(false)
+                setOnClickListener {
+                    suppressChipSync = true
+                    excuseFieldRef?.setText(excuse)
+                    excuseFieldRef?.setSelection(excuse.length)
+                    suppressChipSync = false
+                    excuseChipViews.forEach { (e, v) -> v.background = chipBackground(e == excuse) }
+                }
+            }
+            excuseChipViews[excuse] = chip
+            val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            if (i > 0) params.marginStart = dp(8)
+            excuseChipRow.addView(chip, params)
+        }
+        root.addView(HorizontalScrollView(context).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(excuseChipRow)
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(12) })
+
         val excuseField = EditText(context).apply {
-            hint = "Your excuse (optional)"
+            hint = "...or type your own excuse"
             setTextColor(COLOR_INK)
             setHintTextColor(COLOR_GRAY)
             setBackgroundColor(COLOR_PAPER)
             filters = arrayOf(InputFilter.LengthFilter(INTENT_TEXT_MAX_LEN))
             setSingleLine(true)
             setPadding(dp(16), dp(16), dp(16), dp(16))
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: Editable?) {
+                    // Manually editing away from a selected chip's exact
+                    // text un-highlights it — the chip row reflects what's
+                    // actually in the field, not a stale last tap.
+                    if (suppressChipSync) return
+                    val text = s?.toString().orEmpty()
+                    excuseChipViews.forEach { (e, v) -> v.background = chipBackground(e == text) }
+                }
+            })
         }
+        excuseFieldRef = excuseField
         root.addView(excuseField, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { bottomMargin = dp(32) })
