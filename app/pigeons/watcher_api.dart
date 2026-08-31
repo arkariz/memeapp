@@ -195,6 +195,14 @@ abstract class WatcherHostApi {
   bool isOnboardingComplete();
 
   void setOnboardingComplete();
+
+  /// T-203: generic analytics write path for Dart-originated events
+  /// (onboarding_step, card_generated, card_shared) — mirrors
+  /// analytics_evt's own name/propsJson shape. propsJson must match the
+  /// fixed per-event allowlist enforced Kotlin-side in
+  /// AnalyticsCore.logEventFromBridge (no-PII audit) — unlisted keys are
+  /// dropped, not sent, if this ever drifts out of sync.
+  void logAnalyticsEvent(String name, String propsJson);
 }
 
 /// Kotlin -> Dart: the one result Android can only deliver via callback,

@@ -13,6 +13,7 @@ import android.os.Process
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.arkarizdev.grudge.core.analytics.AnalyticsFlushWorker
 import com.arkarizdev.grudge.core.data.GrudgeDatabase
 import com.arkarizdev.grudge.core.data.SessionEntity
 import com.arkarizdev.grudge.core.data.WatchedAppEntity
@@ -101,6 +102,7 @@ object WatcherCore {
     fun startWatcher(context: Context) {
         context.startForegroundService(Intent(context, WatcherService::class.java))
         WatchdogWorker.schedule(context)
+        AnalyticsFlushWorker.schedule(context)
     }
 
     /**

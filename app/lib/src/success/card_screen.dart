@@ -7,6 +7,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../core/watcher_repository.dart';
 import '../pigeon/watcher_api.g.dart';
 import '../theme/grudge_theme.dart';
 
@@ -18,9 +19,13 @@ import '../theme/grudge_theme.dart';
 /// calls WatcherRepository.acknowledgeCard on dismissal either way,
 /// shared or not, so the same win never re-prompts on the next open.
 class CardScreen extends StatefulWidget {
-  const CardScreen({super.key, required this.card});
+  const CardScreen({super.key, required this.card, this.repo});
 
   final CardDto card;
+
+  /// T-203: optional so existing/test call sites without analytics wiring
+  /// don't need a fake repo just to construct this screen.
+  final WatcherRepository? repo;
 
   @override
   State<CardScreen> createState() => _CardScreenState();
@@ -63,6 +68,9 @@ class _CardScreenState extends State<CardScreen> {
               : "${widget.card.streakCount}-day streak with Bonked. It roasts, I resist.",
         ),
       );
+      // Fires on share-sheet invocation, not actual completion — SharePlus
+      // doesn't expose whether the user followed through past the sheet.
+      await widget.repo?.logAnalyticsEvent('card_shared', {'type': widget.card.kind});
     } finally {
       if (mounted) setState(() => _sharing = false);
     }

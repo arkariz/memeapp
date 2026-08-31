@@ -1,5 +1,6 @@
 package com.arkarizdev.grudge
 
+import com.arkarizdev.grudge.core.analytics.AnalyticsCore
 import com.arkarizdev.grudge.core.watcher.OnboardingPrefs
 import com.arkarizdev.grudge.core.watcher.WatcherCore
 import com.arkarizdev.grudge.core.watcher.WatcherService
@@ -9,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 class MainActivity : FlutterActivity() {
     private val flutterApiScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -183,5 +185,13 @@ private class WatcherApiHandler(private val activity: MainActivity) : WatcherHos
 
     override fun setOnboardingComplete() {
         OnboardingPrefs.setComplete(activity)
+    }
+
+    override fun logAnalyticsEvent(name: String, propsJson: String) {
+        scope.launch {
+            val obj = JSONObject(propsJson)
+            val props = obj.keys().asSequence().associateWith { obj.get(it) }
+            AnalyticsCore.logEventFromBridge(activity, name, props)
+        }
     }
 }

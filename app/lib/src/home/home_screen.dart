@@ -62,8 +62,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _checkForPendingCard() async {
     final card = await widget.repo.getPendingCard();
     if (card == null || !mounted) return;
+    await widget.repo.logAnalyticsEvent('card_generated', {'type': card.kind});
+    if (!mounted) return;
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => CardScreen(card: card), fullscreenDialog: true),
+      MaterialPageRoute(builder: (_) => CardScreen(card: card, repo: widget.repo), fullscreenDialog: true),
     );
     await widget.repo.acknowledgeCard(card.kind, card.referenceId);
     if (!mounted) return;

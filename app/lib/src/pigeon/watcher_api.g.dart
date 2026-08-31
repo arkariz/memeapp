@@ -967,6 +967,30 @@ class WatcherHostApi {
     )
     ;
   }
+
+  /// T-203: generic analytics write path for Dart-originated events
+  /// (onboarding_step, card_generated, card_shared) — mirrors
+  /// analytics_evt's own name/propsJson shape. propsJson must match the
+  /// fixed per-event allowlist enforced Kotlin-side in
+  /// AnalyticsCore.logEventFromBridge (no-PII audit) — unlisted keys are
+  /// dropped, not sent, if this ever drifts out of sync.
+  Future<void> logAnalyticsEvent(String name, String propsJson) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.grudge.WatcherHostApi.logAnalyticsEvent$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[name, propsJson]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
 }
 
 /// Kotlin -> Dart: the one result Android can only deliver via callback,

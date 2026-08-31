@@ -48,6 +48,7 @@ class PermissionStepConfig {
     required this.onRequest,
     this.resultStream,
     this.allowSkip = false,
+    this.onLogStep,
   });
 
   final int stepIndex;
@@ -73,6 +74,11 @@ class PermissionStepConfig {
   final Stream<bool>? resultStream;
 
   final bool allowSkip;
+
+  /// T-203: fires once this step resolves — true on grant, false on
+  /// still-not-granted or explicit skip. Optional so a config built
+  /// without analytics wiring (e.g. in a test) doesn't need a no-op stub.
+  final void Function(bool ok)? onLogStep;
 }
 
 class PermissionStepScreen extends StatefulWidget {
@@ -120,6 +126,7 @@ class _PermissionStepScreenState extends State<PermissionStepScreen> with Widget
   }
 
   Future<void> _handleResult(bool granted) async {
+    widget.config.onLogStep?.call(granted);
     if (granted) {
       widget.onGranted();
     } else {
@@ -130,6 +137,7 @@ class _PermissionStepScreenState extends State<PermissionStepScreen> with Widget
   Future<void> _recheck() async {
     final granted = await widget.config.checkGranted();
     if (!mounted) return;
+    widget.config.onLogStep?.call(granted);
     if (granted) {
       widget.onGranted();
     } else {
@@ -140,6 +148,11 @@ class _PermissionStepScreenState extends State<PermissionStepScreen> with Widget
   void _request() {
     setState(() => _phase = _StepPhase.awaitingResult);
     widget.config.onRequest();
+  }
+
+  void _skip() {
+    widget.config.onLogStep?.call(false);
+    widget.onSkipped?.call();
   }
 
   @override
@@ -226,7 +239,7 @@ class _PermissionStepScreenState extends State<PermissionStepScreen> with Widget
               GrudgeDarkButton(label: recovering ? 'Try again' : config.ctaLabel, onPressed: _request),
               if (config.allowSkip && !recovering) ...[
                 const SizedBox(height: 12),
-                GrudgeLightButton(label: 'Skip for now', onPressed: widget.onSkipped),
+                GrudgeLightButton(label: 'Skip for now', onPressed: _skip),
               ],
               const SizedBox(height: 10),
               SizedBox(

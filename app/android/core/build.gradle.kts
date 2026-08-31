@@ -26,6 +26,19 @@ val giphyApiKey: String = run {
     properties.getProperty("GIPHY_API_KEY", "")
 }
 
+// T-203: POSTHOG_API_KEY, same local.properties pattern as GIPHY_API_KEY
+// above — blank is a fully supported state (AnalyticsCore never builds a
+// PostHogCaptureClient, AnalyticsGateway.flush() becomes a no-op), not a
+// build error.
+val posthogApiKey: String = run {
+    val properties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { properties.load(it) }
+    }
+    properties.getProperty("POSTHOG_API_KEY", "")
+}
+
 android {
     namespace = "com.arkarizdev.grudge.core"
     compileSdk = 36
@@ -33,6 +46,7 @@ android {
     defaultConfig {
         minSdk = 29
         buildConfigField("String", "GIPHY_API_KEY", "\"$giphyApiKey\"")
+        buildConfigField("String", "POSTHOG_API_KEY", "\"$posthogApiKey\"")
     }
 
     buildFeatures {

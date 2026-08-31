@@ -12,6 +12,7 @@ import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
 import com.arkarizdev.grudge.core.BuildConfig
+import com.arkarizdev.grudge.core.analytics.AnalyticsCore
 import com.arkarizdev.grudge.core.data.GrudgeDatabase
 import com.arkarizdev.grudge.core.data.RoastPayloadEntity
 import com.arkarizdev.grudge.core.data.SessionDao
@@ -250,6 +251,19 @@ class WatcherService : Service() {
                 sessionStateMachine.markDone(session.pkg, now)
                 continue
             }
+            // T-203: latency measured at poll-tick granularity (~500ms
+            // slop), same accepted-approximation precedent as roast_payload's
+            // own precompute-time slot filling — not the more precise
+            // view-tree-observer timing RoastOverlayController logs
+            // separately to logcat, which would need a new callback to
+            // surface here for no real benefit at this metric's resolution.
+            serviceScope.launch {
+                AnalyticsCore.logEvent(
+                    applicationContext,
+                    "roast_shown",
+                    mapOf("tier" to payload.tier, "latency_ms" to (System.currentTimeMillis() - now)),
+                )
+            }
             roastOverlay.show(
                 pkg = session.pkg,
                 line1 = payload.line1,
@@ -347,11 +361,12 @@ class WatcherService : Service() {
     /**
      * T-107 / PRD P0-4: "every grant and extension logged with timestamps
      * and session context." A dedicated tag rather than folding into the
-     * general TAG logs keeps this filterable on its own — analytics_evt
-     * (the durable, synced event queue) stays T-203's job per its own doc
-     * comment; this is the always-on debug/observability trail, sufficient
-     * for verifying the friction gradient and grant history live via
-     * logcat without a network dependency.
+     * general TAG logs keeps this filterable on its own — this is the
+     * always-on debug/observability trail, sufficient for verifying the
+     * friction gradient and grant history live via logcat without a
+     * network dependency. T-203: also writes the durable grant/extension
+     * analytics_evt row here, since this function already sits at the
+     * single real call site for both kinds.
      */
     private suspend fun logGrantEvent(
         kind: String,
@@ -367,6 +382,11 @@ class WatcherService : Service() {
             "kind=$kind pkg=$pkg minutes=$minutes extensionsSoFar=$extensionsSoFar " +
                 "hasIntentText=$hasIntentText sessionId=$sessionId ts=$now",
         )
+        if (kind == "GRANT") {
+            AnalyticsCore.logEvent(applicationContext, "grant", mapOf("pkg" to pkg, "min" to minutes, "has_intent" to hasIntentText))
+        } else {
+            AnalyticsCore.logEvent(applicationContext, "extension", mapOf("pkg" to pkg, "n" to extensionsSoFar))
+        }
     }
 
     /**
@@ -443,6 +463,27 @@ class WatcherService : Service() {
             val existing = dao.findActive(finished.pkg) ?: continue
             dao.markEnded(existing.id, finished.endedAt, finished.outcome.name, finished.overageS, finished.extensions)
             Log.i(TAG, "session ended pkg=${finished.pkg} outcome=${finished.outcome} overageS=${finished.overageS}")
+            AnalyticsCore.logEvent(
+                applicationContext,
+                "session_end",
+                mapOf("outcome" to finished.outcome.name, "overage_s" to finished.overageS),
+            )
+            // T-203: roast_outcome is only meaningful once a roast was
+            // actually shown — BEATEN sessions never reach ROASTING, so
+            // "how did the roast interaction resolve" is undefined for
+            // them; firing it anyway would corrupt the P0-6 first-roast-
+            // stop-rate tripwire this field directly feeds.
+            if (finished.outcome != SessionOutcome.BEATEN) {
+                val secsToAction = ((finished.endedAt - existing.expiryAt) / 1000).coerceAtLeast(0)
+                AnalyticsCore.logEvent(
+                    applicationContext,
+                    "roast_outcome",
+                    mapOf(
+                        "outcome" to if (finished.outcome == SessionOutcome.EXTENDED) "extended" else "stopped",
+                        "secs_to_action" to secsToAction,
+                    ),
+                )
+            }
             // T-208/T-209: "cache for the session's lifetime" (tech plan
             // §7c) — the roast overlay never replays history, so a
             // finalized session's cached GIF(s) are no longer reachable.

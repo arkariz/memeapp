@@ -37,6 +37,7 @@ List<PermissionStepConfig> buildPermissionSteps(WatcherRepository repo) => [
         'no evidence, no roast, no app.',
     checkGranted: () async => (await repo.getStatus()).hasUsageAccess,
     onRequest: repo.openUsageAccessSettings,
+    onLogStep: (ok) => repo.logAnalyticsEvent('onboarding_step', {'step': 1, 'ok': ok}),
   ),
   PermissionStepConfig(
     stepIndex: 2,
@@ -56,6 +57,7 @@ List<PermissionStepConfig> buildPermissionSteps(WatcherRepository repo) => [
         'without this, your time just runs out with nothing to show for it.',
     checkGranted: () async => (await repo.getStatus()).hasOverlayPermission,
     onRequest: repo.openOverlayPermissionSettings,
+    onLogStep: (ok) => repo.logAnalyticsEvent('onboarding_step', {'step': 2, 'ok': ok}),
   ),
   PermissionStepConfig(
     stepIndex: 3,
@@ -75,6 +77,7 @@ List<PermissionStepConfig> buildPermissionSteps(WatcherRepository repo) => [
     onRequest: repo.requestNotificationPermission,
     resultStream: NotificationPermissionBridge.instance.results,
     allowSkip: true,
+    onLogStep: (ok) => repo.logAnalyticsEvent('onboarding_step', {'step': 3, 'ok': ok}),
   ),
   PermissionStepConfig(
     stepIndex: 4,
@@ -95,6 +98,7 @@ List<PermissionStepConfig> buildPermissionSteps(WatcherRepository repo) => [
     checkGranted: () async => (await repo.getPermissionSnapshot()).isIgnoringBatteryOptimizations,
     onRequest: repo.requestBatteryExemption,
     allowSkip: true,
+    onLogStep: (ok) => repo.logAnalyticsEvent('onboarding_step', {'step': 4, 'ok': ok}),
   ),
 ];
 

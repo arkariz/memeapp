@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../pigeon/watcher_api.g.dart';
 
 /// Single seam between UI and the native watcher platform channel.
@@ -31,4 +33,9 @@ class WatcherRepository {
 
   Future<bool> isOnboardingComplete() => _api.isOnboardingComplete();
   Future<void> setOnboardingComplete() => _api.setOnboardingComplete();
+
+  /// T-203: generic analytics write path — [props] must match the fixed
+  /// per-event allowlist enforced Kotlin-side (AnalyticsCore.logEventFromBridge).
+  Future<void> logAnalyticsEvent(String name, Map<String, Object?> props) =>
+      _api.logAnalyticsEvent(name, jsonEncode(props));
 }

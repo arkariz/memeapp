@@ -8,8 +8,9 @@ import androidx.room.Query
 
 /**
  * tech plan §4's `analytics_evt` table — the local-first event queue from
- * §6. Schema only — no writer until T-203. propsJson deliberately never
- * carries intent text or usage detail (P0-7 no-PII requirement).
+ * §6. Written exclusively through AnalyticsCore.logEvent() (T-203), which
+ * enforces the no-PII allowlist per event name — propsJson never carries
+ * intent text or usage detail (P0-7 no-PII requirement).
  */
 @Entity(tableName = "analytics_evt")
 data class AnalyticsEvtEntity(
@@ -27,4 +28,7 @@ interface AnalyticsEvtDao {
 
     @Query("SELECT * FROM analytics_evt WHERE sentAt IS NULL")
     suspend fun unsent(): List<AnalyticsEvtEntity>
+
+    @Query("UPDATE analytics_evt SET sentAt = :sentAt WHERE id IN (:ids)")
+    suspend fun markSent(ids: List<Long>, sentAt: Long)
 }

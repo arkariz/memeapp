@@ -748,6 +748,15 @@ interface WatcherHostApi {
   fun requestBatteryExemption()
   fun isOnboardingComplete(): Boolean
   fun setOnboardingComplete()
+  /**
+   * T-203: generic analytics write path for Dart-originated events
+   * (onboarding_step, card_generated, card_shared) — mirrors
+   * analytics_evt's own name/propsJson shape. propsJson must match the
+   * fixed per-event allowlist enforced Kotlin-side in
+   * AnalyticsCore.logEventFromBridge (no-PII audit) — unlisted keys are
+   * dropped, not sent, if this ever drifts out of sync.
+   */
+  fun logAnalyticsEvent(name: String, propsJson: String)
 
   companion object {
     /** The codec used by WatcherHostApi. */
@@ -1025,6 +1034,25 @@ interface WatcherHostApi {
           channel.setMessageHandler { _, reply ->
             val wrapped: List<Any?> = try {
               api.setOnboardingComplete()
+              listOf(null)
+            } catch (exception: Throwable) {
+              WatcherApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.grudge.WatcherHostApi.logAnalyticsEvent$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val nameArg = args[0] as String
+            val propsJsonArg = args[1] as String
+            val wrapped: List<Any?> = try {
+              api.logAnalyticsEvent(nameArg, propsJsonArg)
               listOf(null)
             } catch (exception: Throwable) {
               WatcherApiPigeonUtils.wrapError(exception)
