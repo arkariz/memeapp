@@ -45,16 +45,18 @@ class IntentOverlayController(private val context: Context) {
         private const val DEFAULT_MINUTES = 10
 
         // T-104 excuse chips: pre-written self-roasting excuses (TONE_GUIDE.md
-        // rules apply — action, not person). PLACEHOLDER COPY — swap for the
-        // real pack once written; see the copywriting prompt in the PR
-        // description for how these were briefed.
+        // rules apply — action, not person).
         private val EXCUSE_CHIPS = listOf(
-            "Just checking one thing.",
-            "Five minutes, tops.",
-            "Research purposes only.",
-            "Emotional support scrolling.",
-            "I have a plan. Trust me.",
-            "No reason. Just vibes.",
+            "Need inspiration for a project.",
+            "Just checking the weather, basically.",
+            "My hands did this automatically.",
+            "Waiting for a massive file to download.",
+            "It's called a micro-break, okay?",
+            "A rewards program for opening my laptop.",
+            "Slightly overwhelmed by my to-do list.",
+            "Checking if the internet is still on.",
+            "Just making sure I'm not missing out.",
+            "Purely a tactical retreat.",
         )
 
         // T-104 typed-excuse roast: reacts live to what the user types in
@@ -62,16 +64,16 @@ class IntentOverlayController(private val context: Context) {
         // LLM/NLP exists here, so "reacting to what they typed" means
         // keyword pattern-matching against common excuse tropes, not real
         // understanding — first match wins, "%APP%" is swapped for the
-        // blocked app's label. PLACEHOLDER COPY, same as EXCUSE_CHIPS.
+        // blocked app's label.
         private val EXCUSE_KEYWORD_ROASTS = listOf(
-            listOf("work", "job") to "\"Work\"? On %APP%? Sure.",
-            listOf("boss", "email", "meeting") to "Bringing the boss into this. Bold.",
-            listOf("quick", "fast", "sec", "second") to "\"Quick,\" they said. History disagrees.",
-            listOf("bored", "boredom") to "Boredom: the most honest excuse here.",
-            listOf("friend", "someone", "he ", "she ", "they ") to "Blaming someone else already. Confident.",
-            listOf("important", "urgent") to "\"Important\"? On %APP%? Suuure.",
-            listOf("research", "study", "studying") to "Ah yes. The research. Very academic.",
-            listOf("break", "rest", "tired") to "A break. From what, exactly?",
+            listOf("automatic", "muscle", "habit", "accident") to "The hands have a mind of their own, apparently.",
+            listOf("download", "load", "render", "export") to "Ah, the classic 'waiting for technology' defense.",
+            listOf("music", "song", "playlist", "audio") to "An essential audio track for maximum focus, surely.",
+            listOf("text", "message", "ping", "notification") to "The Pavlovian response to a vibrating pocket.",
+            listOf("link", "source", "article", "read") to "A highly intellectual deep-dive, no doubt.",
+            listOf("video", "watch", "stream", "clip") to "Just one video. Which inevitably leads to twelve more.",
+            listOf("group", "chat", "community", "server") to "The digital village requires your immediate presence.",
+            listOf("break", "pause", "breathe", "lunch") to "Resting hard from the exhaustion of existing.",
         )
 
         // Used when the typed text doesn't match any keyword above — still
@@ -79,11 +81,14 @@ class IntentOverlayController(private val context: Context) {
         // specific hook to react to. Picked once per typing session (see
         // the TextWatcher below), not re-rolled on every keystroke.
         private val EXCUSE_GENERIC_ROASTS = listOf(
-            "Writing your own? This should be good.",
-            "Freestyling it. Respect the ambition.",
-            "The plot thickens.",
-            "We're listening. Skeptically.",
-            "Going off-script. Noted.",
+            "An interesting premise. Let's see how it unfolds.",
+            "Compiling this specific excuse into the database.",
+            "A bespoke justification. Freshly pressed.",
+            "The defense rests its case. The timer begins.",
+            "A unique plot twist in your productivity arc.",
+            "Drafting an original screenplay in the reason field.",
+            "The system is processing this custom explanation.",
+            "Crafting your own narrative. We respect the art.",
         )
 
         private const val COLOR_INK = 0xFF0D0D0D.toInt()
