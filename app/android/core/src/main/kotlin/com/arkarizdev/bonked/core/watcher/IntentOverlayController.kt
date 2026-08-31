@@ -1,14 +1,20 @@
 package com.arkarizdev.bonked.core.watcher
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
+import android.text.Editable
 import android.text.InputFilter
+import android.text.TextWatcher
 import android.util.Log
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
+import android.view.View.MeasureSpec
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
@@ -38,6 +44,74 @@ class IntentOverlayController(private val context: Context) {
         private const val INTENT_TEXT_MAX_LEN = 80 // PRD P0-2: shield-subtitle budget
         private val DURATION_OPTIONS = listOf(5, 10, 15, 30)
         private const val DEFAULT_MINUTES = 10
+
+        // T-104 excuse chips: pre-written self-roasting excuses (TONE_GUIDE.md
+        // rules apply — action, not person).
+        private val EXCUSE_CHIPS = listOf(
+            "Need inspiration for a project.",
+            "Just checking the weather, basically.",
+            "My hands did this automatically.",
+            "Waiting for a massive file to download.",
+            "It's called a micro-break, okay?",
+            "A rewards program for opening my laptop.",
+            "Slightly overwhelmed by my to-do list.",
+            "Checking if the internet is still on.",
+            "Just making sure I'm not missing out.",
+            "Purely a tactical retreat.",
+        )
+
+        // T-104: the field starts pre-filled with this one (chip
+        // highlighted, text set) rather than empty — there's no
+        // "uncheck" affordance on a chip, only switching to a different
+        // chip or overwriting the text by hand. Must be an exact string
+        // from EXCUSE_CHIPS above, or the default won't highlight.
+        private const val DEFAULT_EXCUSE = "My hands did this automatically."
+
+        // T-104 typed-excuse roast: reacts live to what the user types in
+        // the free-text field, once it stops matching a chip. No on-device
+        // LLM/NLP exists here, so "reacting to what they typed" means
+        // keyword pattern-matching against common excuse tropes, not real
+        // understanding — first match wins, "%APP%" is swapped for the
+        // blocked app's label.
+        private val EXCUSE_KEYWORD_ROASTS = listOf(
+            listOf("automatic", "muscle", "habit", "accident") to "The hands have a mind of their own, apparently.",
+            listOf("download", "load", "render", "export") to "Ah, the classic 'waiting for technology' defense.",
+            listOf("music", "song", "playlist", "audio") to "An essential audio track for maximum focus, surely.",
+            listOf("text", "message", "ping", "notification") to "The Pavlovian response to a vibrating pocket.",
+            listOf("link", "source", "article", "read") to "A highly intellectual deep-dive, no doubt.",
+            listOf("video", "watch", "stream", "clip") to "Just one video. Which inevitably leads to twelve more.",
+            listOf("group", "chat", "community", "server") to "The digital village requires your immediate presence.",
+            listOf("break", "pause", "breathe", "lunch") to "Resting hard from the exhaustion of existing.",
+        )
+
+        // Used when the typed text doesn't match any keyword above — still
+        // reacting to "they're writing a custom one," just without a
+        // specific hook to react to. Picked once per typing session (see
+        // the TextWatcher below), not re-rolled on every keystroke.
+        private val EXCUSE_GENERIC_ROASTS = listOf(
+            "An interesting premise. Let's see how it unfolds.",
+            "Compiling this specific excuse into the database.",
+            "A bespoke justification. Freshly pressed.",
+            "The defense rests its case. The timer begins.",
+            "A unique plot twist in your productivity arc.",
+            "Drafting an original screenplay in the reason field.",
+            "The system is processing this custom explanation.",
+            "Crafting your own narrative. We respect the art.",
+        )
+
+        // T-104: reused in two places — live, while the free-text field
+        // is empty mid-edit (a caption, doesn't block anything), and as
+        // the confirmation prompt when START is tapped with free text
+        // active and empty (does block the first tap — see the START
+        // click handler's emptyConfirmPending logic). Picked at random
+        // each time.
+        private val EXCUSE_EMPTY_ROASTS = listOf(
+            "Nothing? Not even a bad excuse?",
+            "Silence isn't an excuse. Try again.",
+            "Even a weak excuse beats no excuse.",
+            "Deleting the evidence won't work here.",
+            "The field is judging this blank stare.",
+        )
 
         private const val COLOR_INK = 0xFF0D0D0D.toInt()
         private const val COLOR_PAPER = 0xFFFFFFFF.toInt()
@@ -75,10 +149,11 @@ class IntentOverlayController(private val context: Context) {
         budgetMin: Int,
         usedMinToday: Int,
         onGrant: (minutes: Int, intentText: String?) -> Unit,
+        onCancel: () -> Unit,
     ) {
         if (shownForPkg == pkg) return
         shownForPkg = pkg // set immediately so a second poll tick can't double-post
-        mainHandler.post { showOnMainThread(pkg, eventTs, budgetMin, usedMinToday, onGrant) }
+        mainHandler.post { showOnMainThread(pkg, eventTs, budgetMin, usedMinToday, onGrant, onCancel) }
     }
 
     private fun showOnMainThread(
@@ -87,6 +162,7 @@ class IntentOverlayController(private val context: Context) {
         budgetMin: Int,
         usedMinToday: Int,
         onGrant: (minutes: Int, intentText: String?) -> Unit,
+        onCancel: () -> Unit,
     ) {
         removeCurrentViewOnMainThread() // NOT dismissViewOnMainThread() — see its doc comment; this was T-106's live-caught flicker bug, fixed here too for the same reason
 
@@ -98,6 +174,32 @@ class IntentOverlayController(private val context: Context) {
             setBackgroundColor(COLOR_PAPER)
             setPadding(dp(24), dp(48), dp(24), dp(32))
         }
+
+        // Cancelling backs out exactly like SessionStateMachine.onAppLeft's
+        // INTENT_PENDING -> IDLE case already treats "left without
+        // granting" — no session was ever created (grant() is what
+        // creates the Room row), so there's nothing to finalize. Also
+        // sends the user home: dismissing the overlay alone would just
+        // reveal the still-blocked app sitting underneath with nothing
+        // granted, which defeats the point of backing out of it.
+        fun cancel() {
+            Log.i(TAG, "CANCEL pkg=$pkg")
+            onCancel()
+            dismissViewOnMainThread()
+            goToHomeScreen()
+        }
+
+        root.addView(TextView(context).apply {
+            text = "← BACK"
+            setTextColor(COLOR_GRAY)
+            textSize = 14f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { cancel() }
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(12) })
 
         root.addView(TextView(context).apply {
             text = "HOW LONG THIS TIME?"
@@ -162,18 +264,137 @@ class IntentOverlayController(private val context: Context) {
         ).apply { bottomMargin = dp(12) })
         refreshBudgetWarning() // reflects the DEFAULT_MINUTES chip pre-selected above
 
+        root.addView(TextView(context).apply {
+            text = "WHY, THOUGH? (PICK ONE OR WRITE YOUR OWN)"
+            setTextColor(COLOR_GRAY)
+            textSize = 11f
+            letterSpacing = 0.08f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(8) })
+
+        // Chip and free text are mutually exclusive excuse sources, not
+        // "tap fills the field": picking a chip selects it (highlighted)
+        // and clears the field back to its hint, so it's obvious the chip
+        // is what's active; typing anything in the field deselects
+        // whatever chip was picked. Either way, whatever ends up active
+        // is the user roasting themselves, on the record, before the
+        // session even starts.
+        val excuseChipViews = mutableMapOf<String, TextView>()
+        var selectedChipExcuse: String? = DEFAULT_EXCUSE // pre-selected; see the chip loop below
+        var emptyConfirmPending = false // see START's click handler
+        var suppressChipSync = false
+        var excuseFieldRef: EditText? = null // assigned once excuseField is built below; chip taps only fire after that
+        var typedExcuseRoastRef: TextView? = null // assigned once typedExcuseRoast is built below, same reason
+        // FlowLayout, not a HorizontalScrollView: 10 chips of varying width
+        // scrolled off-screen sideways with no visual hint there was more
+        // — wrapping onto new lines keeps every option visible up front.
+        val excuseChipRow = FlowLayout(context).apply {
+            horizontalSpacing = dp(8)
+            verticalSpacing = dp(8)
+        }
+        for (excuse in EXCUSE_CHIPS) {
+            val chip = TextView(context).apply {
+                text = excuse
+                setTextColor(COLOR_INK)
+                textSize = 12f
+                setPadding(dp(12), dp(8), dp(12), dp(8))
+                background = chipBackground(excuse == DEFAULT_EXCUSE)
+                setOnClickListener {
+                    selectedChipExcuse = excuse
+                    emptyConfirmPending = false
+                    suppressChipSync = true
+                    excuseFieldRef?.setText("") // back to the hint, per point 1 — the chip is what's active now, not the field
+                    suppressChipSync = false
+                    excuseChipViews.forEach { (e, v) -> v.background = chipBackground(e == excuse) }
+                    typedExcuseRoastRef?.visibility = View.GONE
+                }
+            }
+            excuseChipViews[excuse] = chip
+            excuseChipRow.addView(chip)
+        }
+        root.addView(excuseChipRow, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(12) })
+
+        // Live reaction to a custom-typed excuse — see EXCUSE_KEYWORD_ROASTS'
+        // doc comment for what "reacting to what they typed" actually means
+        // here (pattern-matching, not real understanding).
+        val typedExcuseRoast = TextView(context).apply {
+            setTextColor(COLOR_RED)
+            textSize = 12f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            visibility = View.GONE
+        }
+        typedExcuseRoastRef = typedExcuseRoast
+        var wasCustomTyping = false
+        var lastGenericRoast: String? = null
+        fun keywordRoastFor(text: String): String? {
+            val lower = text.lowercase()
+            val (_, template) = EXCUSE_KEYWORD_ROASTS.firstOrNull { (keywords, _) -> keywords.any { lower.contains(it) } }
+                ?: return null
+            return template.replace("%APP%", appLabel(pkg))
+        }
+
         val excuseField = EditText(context).apply {
-            hint = "Your excuse (optional)"
+            hint = "...or type your own excuse"
             setTextColor(COLOR_INK)
             setHintTextColor(COLOR_GRAY)
             setBackgroundColor(COLOR_PAPER)
             filters = arrayOf(InputFilter.LengthFilter(INTENT_TEXT_MAX_LEN))
             setSingleLine(true)
             setPadding(dp(16), dp(16), dp(16), dp(16))
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: Editable?) {
+                    if (suppressChipSync) return
+                    // Any real (user-driven) edit means free text is now
+                    // the active source — deselect whatever chip was
+                    // picked (including the default), and any pending
+                    // "tap again to go empty" confirm no longer applies
+                    // to this fresh attempt.
+                    if (selectedChipExcuse != null) {
+                        selectedChipExcuse = null
+                        excuseChipViews.values.forEach { it.background = chipBackground(false) }
+                    }
+                    emptyConfirmPending = false
+
+                    val text = s?.toString().orEmpty()
+                    if (text.isEmpty()) {
+                        // Reacts to the attempt live, but doesn't block it
+                        // — START's click handler is what actually gates
+                        // submitting with no excuse (point 2).
+                        wasCustomTyping = false
+                        typedExcuseRoast.text = "✍️ ${EXCUSE_EMPTY_ROASTS.random()}"
+                        typedExcuseRoast.visibility = View.VISIBLE
+                        return
+                    }
+                    val keywordRoast = keywordRoastFor(text)
+                    val roast = keywordRoast ?: run {
+                        // No specific hook this keystroke — reuse the same
+                        // generic line for the rest of this typing session
+                        // instead of re-rolling on every character, or it'd
+                        // flicker line-to-line while they type.
+                        if (!wasCustomTyping || lastGenericRoast == null) {
+                            lastGenericRoast = EXCUSE_GENERIC_ROASTS.random()
+                        }
+                        lastGenericRoast!!
+                    }
+                    wasCustomTyping = true
+                    typedExcuseRoast.text = "✍️ $roast"
+                    typedExcuseRoast.visibility = View.VISIBLE
+                }
+            })
         }
+        excuseFieldRef = excuseField
         root.addView(excuseField, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = dp(32) })
+        ).apply { bottomMargin = dp(8) })
+        root.addView(typedExcuseRoast, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(24) })
 
         // Spacer pushes the CTA down, matching the Figma layout.
         root.addView(View(context), LinearLayout.LayoutParams(0, 0, 1f))
@@ -184,10 +405,39 @@ class IntentOverlayController(private val context: Context) {
             setBackgroundColor(COLOR_INK)
             isAllCaps = true
             setOnClickListener {
-                val text = excuseField.text?.toString()?.trim().takeUnless { it.isNullOrEmpty() }
-                Log.i(TAG, "START tapped pkg=$pkg minutes=$selectedMinutes hasText=${text != null}")
-                onGrant(selectedMinutes, text)
-                dismissViewOnMainThread() // already on the main thread — this is a click listener
+                val chipExcuse = selectedChipExcuse
+                val typedExcuse = excuseField.text?.toString()?.trim().takeUnless { it.isNullOrEmpty() }
+                when {
+                    // A chip is active (the default, or an explicit pick)
+                    // — always a real excuse, no confirmation needed.
+                    chipExcuse != null -> {
+                        Log.i(TAG, "START tapped pkg=$pkg minutes=$selectedMinutes text=$chipExcuse source=chip")
+                        onGrant(selectedMinutes, chipExcuse)
+                        dismissViewOnMainThread()
+                    }
+                    // Free text is active and has something in it.
+                    typedExcuse != null -> {
+                        Log.i(TAG, "START tapped pkg=$pkg minutes=$selectedMinutes text=$typedExcuse source=typed")
+                        onGrant(selectedMinutes, typedExcuse)
+                        dismissViewOnMainThread()
+                    }
+                    // Free text is active but empty (point 2): first tap
+                    // roasts and refuses to submit — the user has to mean
+                    // it. Doesn't dismiss the overlay.
+                    !emptyConfirmPending -> {
+                        emptyConfirmPending = true
+                        typedExcuseRoast.text = "⚠️ ${EXCUSE_EMPTY_ROASTS.random()} TAP START AGAIN TO GO WITH NO EXCUSE."
+                        typedExcuseRoast.visibility = View.VISIBLE
+                        Log.i(TAG, "START tapped pkg=$pkg with empty excuse — awaiting confirm")
+                    }
+                    // Second tap with the roast already showing: they mean
+                    // it, proceed with no excuse.
+                    else -> {
+                        Log.i(TAG, "START tapped pkg=$pkg minutes=$selectedMinutes text=<empty, confirmed>")
+                        onGrant(selectedMinutes, null)
+                        dismissViewOnMainThread()
+                    }
+                }
             }
         })
 
@@ -202,8 +452,23 @@ class IntentOverlayController(private val context: Context) {
             gravity = Gravity.TOP
         }
 
+        // Hardware/gesture back cancels the same way the "← BACK" button
+        // does, instead of doing nothing — this window is focusable (the
+        // excuse field needs real keyboard input) so it does receive key
+        // events, but nothing consumed KEYCODE_BACK before this.
+        root.isFocusableInTouchMode = true
+        root.setOnKeyListener { _, keyCode, event ->
+            if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
+                cancel()
+                true
+            } else {
+                false
+            }
+        }
+
         windowManager.addView(root, lp)
         overlayView = root
+        root.requestFocus()
         // shownForPkg was already set synchronously in show() and is no
         // longer touched by removeCurrentViewOnMainThread() above — no
         // need to re-assert it here (it previously masked the same bug
@@ -255,6 +520,20 @@ class IntentOverlayController(private val context: Context) {
         overlayView = null
     }
 
+    /** Same pattern as RoastOverlayController's helper of the same name — used by cancel() so backing out actually leaves the blocked app instead of just clearing the overlay on top of it. */
+    private fun goToHomeScreen() {
+        try {
+            context.startActivity(
+                Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                },
+            )
+        } catch (t: Exception) {
+            Log.w(TAG, "goToHomeScreen failed", t)
+        }
+    }
+
     private fun chipBackground(selected: Boolean) = android.graphics.drawable.GradientDrawable().apply {
         setColor(if (selected) COLOR_YELLOW else COLOR_PAPER)
         setStroke(dp(3), COLOR_INK)
@@ -264,4 +543,58 @@ class IntentOverlayController(private val context: Context) {
 
     private fun dp(value: Int): Int =
         (value * context.resources.displayMetrics.density).toInt()
+}
+
+/**
+ * Minimal left-to-right wrapping layout — lays children out in a row and
+ * starts a new line whenever the next child would overflow the available
+ * width. Used for the excuse chip row: pulling in a full flexbox library
+ * for one wrapping row of chips would be a lot of dependency for a little
+ * bit of behavior, and every other overlay in this file is already plain
+ * Android views with no library dependency by the same reasoning.
+ */
+private class FlowLayout(context: Context) : ViewGroup(context) {
+    var horizontalSpacing = 0
+    var verticalSpacing = 0
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val maxWidth = MeasureSpec.getSize(widthMeasureSpec)
+        var x = 0
+        var y = 0
+        var lineHeight = 0
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            measureChild(child, widthMeasureSpec, heightMeasureSpec)
+            val childWidth = child.measuredWidth
+            val childHeight = child.measuredHeight
+            if (x > 0 && x + childWidth > maxWidth) {
+                x = 0
+                y += lineHeight + verticalSpacing
+                lineHeight = 0
+            }
+            x += childWidth + horizontalSpacing
+            lineHeight = maxOf(lineHeight, childHeight)
+        }
+        setMeasuredDimension(maxWidth, y + lineHeight)
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        val maxWidth = r - l
+        var x = 0
+        var y = 0
+        var lineHeight = 0
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            val childWidth = child.measuredWidth
+            val childHeight = child.measuredHeight
+            if (x > 0 && x + childWidth > maxWidth) {
+                x = 0
+                y += lineHeight + verticalSpacing
+                lineHeight = 0
+            }
+            child.layout(x, y, x + childWidth, y + childHeight)
+            x += childWidth + horizontalSpacing
+            lineHeight = maxOf(lineHeight, childHeight)
+        }
+    }
 }

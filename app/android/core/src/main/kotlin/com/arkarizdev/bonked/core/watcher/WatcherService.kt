@@ -347,22 +347,38 @@ class WatcherService : Service() {
         // silently letting the two drift apart with no feedback.
         val budgetMin = db.watchedAppDao().findByPkg(pkg)?.budgetMin ?: 0
         val usedMinToday = WatcherCore.usedMinutesTodayFor(applicationContext, pkg, eventTs)
-        intentOverlay.show(pkg, eventTs, budgetMin, usedMinToday) { minutes, intentText ->
-            val now = System.currentTimeMillis()
-            val ok = sessionStateMachine.grant(pkg, minutes, intentText, now)
-            Log.i(TAG, "grant pkg=$pkg minutes=$minutes ok=$ok")
-            if (ok) {
-                serviceScope.launch {
-                    try {
-                        persistActiveSessions()
-                        logGrantEvent(kind = "GRANT", pkg = pkg, minutes = minutes, extensionsSoFar = 0, hasIntentText = !intentText.isNullOrBlank(), now = now)
-                        precomputeRoast(pkg, intentText, grantedMin = minutes, extensionsSoFar = 0)
-                    } catch (t: Throwable) {
-                        Log.e(TAG, "persist/precompute after grant failed", t)
+        intentOverlay.show(
+            pkg = pkg,
+            eventTs = eventTs,
+            budgetMin = budgetMin,
+            usedMinToday = usedMinToday,
+            onGrant = { minutes, intentText ->
+                val now = System.currentTimeMillis()
+                val ok = sessionStateMachine.grant(pkg, minutes, intentText, now)
+                Log.i(TAG, "grant pkg=$pkg minutes=$minutes ok=$ok")
+                if (ok) {
+                    serviceScope.launch {
+                        try {
+                            persistActiveSessions()
+                            logGrantEvent(kind = "GRANT", pkg = pkg, minutes = minutes, extensionsSoFar = 0, hasIntentText = !intentText.isNullOrBlank(), now = now)
+                            precomputeRoast(pkg, intentText, grantedMin = minutes, extensionsSoFar = 0)
+                        } catch (t: Throwable) {
+                            Log.e(TAG, "persist/precompute after grant failed", t)
+                        }
                     }
                 }
-            }
-        }
+            },
+            onCancel = {
+                // Mirrors the existing "user switched away without
+                // granting" path (onAppLeft's INTENT_PENDING -> IDLE case)
+                // — backing out via the overlay's own back button/hardware
+                // back is the same abandonment, just triggered from inside
+                // the overlay instead of by a foreground-app change event.
+                val now = System.currentTimeMillis()
+                sessionStateMachine.onAppLeft(pkg, now)
+                Log.i(TAG, "intent overlay cancelled pkg=$pkg")
+            },
+        )
     }
 
     /**

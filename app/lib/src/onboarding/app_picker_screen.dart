@@ -341,14 +341,14 @@ class _AppRowState extends State<_AppRow> {
                 ),
               ),
             ),
-            if (selected && budgetMin != null)
+            if (selected)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _formatBudget(budgetMin!),
+                      _formatBudget(budgetMin),
                       style: const TextStyle(color: BonkedColors.ink, fontWeight: FontWeight.w900, fontSize: 16),
                     ),
                     SliderTheme(
@@ -361,11 +361,11 @@ class _AppRowState extends State<_AppRow> {
                         valueIndicatorTextStyle: const TextStyle(color: BonkedColors.yellow, fontWeight: FontWeight.w800),
                       ),
                       child: Slider(
-                        value: budgetMin!.toDouble().clamp(_kBudgetMinMinutes.toDouble(), _kBudgetMaxMinutes.toDouble()),
+                        value: budgetMin.toDouble().clamp(_kBudgetMinMinutes.toDouble(), _kBudgetMaxMinutes.toDouble()),
                         min: _kBudgetMinMinutes.toDouble(),
                         max: _kBudgetMaxMinutes.toDouble(),
                         divisions: (_kBudgetMaxMinutes - _kBudgetMinMinutes) ~/ _kBudgetStepMinutes,
-                        label: _formatBudget(budgetMin!),
+                        label: _formatBudget(budgetMin),
                         onChanged: (value) => onBudgetChanged(value.round()),
                       ),
                     ),
