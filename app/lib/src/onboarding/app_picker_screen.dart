@@ -200,8 +200,8 @@ String _budgetCopy(int minutes) {
   if (minutes <= 15) return 'Quick leash. Respectable.';
   if (minutes <= 30) return "Reasonable. Don't get used to it.";
   if (minutes <= 60) return "An hour of good behavior. We'll see.";
-  if (minutes <= 120) return "That's not a budget, that's a lifestyle.";
-  return 'THREE HOURS. The roast is gonna be personal.';
+  if (minutes <= 120) return 'Two hours. Bold. Concerning, but bold.';
+  return 'THREE HOURS. At this point, just move in.';
 }
 
 Color _budgetCopyColor(int minutes) {
