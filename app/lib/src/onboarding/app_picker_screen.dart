@@ -191,6 +191,36 @@ String _formatBudget(int minutes) {
   return remainder == 0 ? '${hours}H' : '${hours}H${remainder}M';
 }
 
+/// The budget picked here is exactly what the roast overlay measures a
+/// session against later — a bigger number today means a harsher roast
+/// down the line, so the copy previews that escalation right at the
+/// slider: it gets louder (shorter, punchier, angrier) the more time is
+/// dialed in, in step with [_budgetCopyColor]/[_budgetCopyWeight] below.
+String _budgetCopy(int minutes) {
+  if (minutes <= 15) return 'Quick leash. Respectable.';
+  if (minutes <= 30) return "Reasonable. Don't get used to it.";
+  if (minutes <= 60) return "An hour of good behavior. We'll see.";
+  if (minutes <= 120) return "That's not a budget, that's a lifestyle.";
+  return 'THREE HOURS. The roast is gonna be personal.';
+}
+
+Color _budgetCopyColor(int minutes) {
+  if (minutes <= 30) return BonkedColors.gray;
+  if (minutes <= 90) return BonkedColors.ink;
+  return BonkedColors.red;
+}
+
+FontWeight _budgetCopyWeight(int minutes) {
+  if (minutes <= 30) return FontWeight.w500;
+  if (minutes <= 90) return FontWeight.w800;
+  return FontWeight.w900;
+}
+
+double _budgetCopySize(int minutes) {
+  if (minutes <= 90) return 12;
+  return 13;
+}
+
 class _AppRow extends StatelessWidget {
   const _AppRow({
     required this.app,
@@ -273,13 +303,24 @@ class _AppRow extends StatelessWidget {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.only(bottom: 2),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(_formatBudget(_kBudgetMinMinutes), style: bonkedBody(size: 11)),
                           Text(_formatBudget(_kBudgetMaxMinutes), style: bonkedBody(size: 11)),
                         ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        _budgetCopy(budgetMin!),
+                        style: TextStyle(
+                          color: _budgetCopyColor(budgetMin!),
+                          fontWeight: _budgetCopyWeight(budgetMin!),
+                          fontSize: _budgetCopySize(budgetMin!),
+                        ),
                       ),
                     ),
                   ],
