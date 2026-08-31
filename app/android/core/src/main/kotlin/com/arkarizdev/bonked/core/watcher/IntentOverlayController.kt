@@ -1,6 +1,7 @@
 package com.arkarizdev.bonked.core.watcher
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Handler
@@ -8,6 +9,7 @@ import android.os.Looper
 import android.text.InputFilter
 import android.util.Log
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
@@ -75,10 +77,11 @@ class IntentOverlayController(private val context: Context) {
         budgetMin: Int,
         usedMinToday: Int,
         onGrant: (minutes: Int, intentText: String?) -> Unit,
+        onCancel: () -> Unit,
     ) {
         if (shownForPkg == pkg) return
         shownForPkg = pkg // set immediately so a second poll tick can't double-post
-        mainHandler.post { showOnMainThread(pkg, eventTs, budgetMin, usedMinToday, onGrant) }
+        mainHandler.post { showOnMainThread(pkg, eventTs, budgetMin, usedMinToday, onGrant, onCancel) }
     }
 
     private fun showOnMainThread(
@@ -87,6 +90,7 @@ class IntentOverlayController(private val context: Context) {
         budgetMin: Int,
         usedMinToday: Int,
         onGrant: (minutes: Int, intentText: String?) -> Unit,
+        onCancel: () -> Unit,
     ) {
         removeCurrentViewOnMainThread() // NOT dismissViewOnMainThread() — see its doc comment; this was T-106's live-caught flicker bug, fixed here too for the same reason
 
@@ -98,6 +102,32 @@ class IntentOverlayController(private val context: Context) {
             setBackgroundColor(COLOR_PAPER)
             setPadding(dp(24), dp(48), dp(24), dp(32))
         }
+
+        // Cancelling backs out exactly like SessionStateMachine.onAppLeft's
+        // INTENT_PENDING -> IDLE case already treats "left without
+        // granting" — no session was ever created (grant() is what
+        // creates the Room row), so there's nothing to finalize. Also
+        // sends the user home: dismissing the overlay alone would just
+        // reveal the still-blocked app sitting underneath with nothing
+        // granted, which defeats the point of backing out of it.
+        fun cancel() {
+            Log.i(TAG, "CANCEL pkg=$pkg")
+            onCancel()
+            dismissViewOnMainThread()
+            goToHomeScreen()
+        }
+
+        root.addView(TextView(context).apply {
+            text = "← BACK"
+            setTextColor(COLOR_GRAY)
+            textSize = 14f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { cancel() }
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(12) })
 
         root.addView(TextView(context).apply {
             text = "HOW LONG THIS TIME?"
@@ -202,8 +232,23 @@ class IntentOverlayController(private val context: Context) {
             gravity = Gravity.TOP
         }
 
+        // Hardware/gesture back cancels the same way the "← BACK" button
+        // does, instead of doing nothing — this window is focusable (the
+        // excuse field needs real keyboard input) so it does receive key
+        // events, but nothing consumed KEYCODE_BACK before this.
+        root.isFocusableInTouchMode = true
+        root.setOnKeyListener { _, keyCode, event ->
+            if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
+                cancel()
+                true
+            } else {
+                false
+            }
+        }
+
         windowManager.addView(root, lp)
         overlayView = root
+        root.requestFocus()
         // shownForPkg was already set synchronously in show() and is no
         // longer touched by removeCurrentViewOnMainThread() above — no
         // need to re-assert it here (it previously masked the same bug
@@ -253,6 +298,20 @@ class IntentOverlayController(private val context: Context) {
             }
         }
         overlayView = null
+    }
+
+    /** Same pattern as RoastOverlayController's helper of the same name — used by cancel() so backing out actually leaves the blocked app instead of just clearing the overlay on top of it. */
+    private fun goToHomeScreen() {
+        try {
+            context.startActivity(
+                Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                },
+            )
+        } catch (t: Exception) {
+            Log.w(TAG, "goToHomeScreen failed", t)
+        }
     }
 
     private fun chipBackground(selected: Boolean) = android.graphics.drawable.GradientDrawable().apply {
