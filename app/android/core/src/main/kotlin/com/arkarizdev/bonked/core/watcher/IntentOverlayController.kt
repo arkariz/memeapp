@@ -13,10 +13,11 @@ import android.util.Log
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
+import android.view.View.MeasureSpec
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
-import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -261,8 +262,14 @@ class IntentOverlayController(private val context: Context) {
         val excuseChipViews = mutableMapOf<String, TextView>()
         var suppressChipSync = false
         var excuseFieldRef: EditText? = null // assigned once excuseField is built below; chip taps only fire after that
-        val excuseChipRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-        for ((i, excuse) in EXCUSE_CHIPS.withIndex()) {
+        // FlowLayout, not a HorizontalScrollView: 10 chips of varying width
+        // scrolled off-screen sideways with no visual hint there was more
+        // — wrapping onto new lines keeps every option visible up front.
+        val excuseChipRow = FlowLayout(context).apply {
+            horizontalSpacing = dp(8)
+            verticalSpacing = dp(8)
+        }
+        for (excuse in EXCUSE_CHIPS) {
             val chip = TextView(context).apply {
                 text = excuse
                 setTextColor(COLOR_INK)
@@ -278,14 +285,9 @@ class IntentOverlayController(private val context: Context) {
                 }
             }
             excuseChipViews[excuse] = chip
-            val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-            if (i > 0) params.marginStart = dp(8)
-            excuseChipRow.addView(chip, params)
+            excuseChipRow.addView(chip)
         }
-        root.addView(HorizontalScrollView(context).apply {
-            isHorizontalScrollBarEnabled = false
-            addView(excuseChipRow)
-        }, LinearLayout.LayoutParams(
+        root.addView(excuseChipRow, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { bottomMargin = dp(12) })
 
@@ -477,4 +479,58 @@ class IntentOverlayController(private val context: Context) {
 
     private fun dp(value: Int): Int =
         (value * context.resources.displayMetrics.density).toInt()
+}
+
+/**
+ * Minimal left-to-right wrapping layout — lays children out in a row and
+ * starts a new line whenever the next child would overflow the available
+ * width. Used for the excuse chip row: pulling in a full flexbox library
+ * for one wrapping row of chips would be a lot of dependency for a little
+ * bit of behavior, and every other overlay in this file is already plain
+ * Android views with no library dependency by the same reasoning.
+ */
+private class FlowLayout(context: Context) : ViewGroup(context) {
+    var horizontalSpacing = 0
+    var verticalSpacing = 0
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val maxWidth = MeasureSpec.getSize(widthMeasureSpec)
+        var x = 0
+        var y = 0
+        var lineHeight = 0
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            measureChild(child, widthMeasureSpec, heightMeasureSpec)
+            val childWidth = child.measuredWidth
+            val childHeight = child.measuredHeight
+            if (x > 0 && x + childWidth > maxWidth) {
+                x = 0
+                y += lineHeight + verticalSpacing
+                lineHeight = 0
+            }
+            x += childWidth + horizontalSpacing
+            lineHeight = maxOf(lineHeight, childHeight)
+        }
+        setMeasuredDimension(maxWidth, y + lineHeight)
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        val maxWidth = r - l
+        var x = 0
+        var y = 0
+        var lineHeight = 0
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            val childWidth = child.measuredWidth
+            val childHeight = child.measuredHeight
+            if (x > 0 && x + childWidth > maxWidth) {
+                x = 0
+                y += lineHeight + verticalSpacing
+                lineHeight = 0
+            }
+            child.layout(x, y, x + childWidth, y + childHeight)
+            x += childWidth + horizontalSpacing
+            lineHeight = maxOf(lineHeight, childHeight)
+        }
+    }
 }
