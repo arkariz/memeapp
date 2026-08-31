@@ -57,6 +57,35 @@ class IntentOverlayController(private val context: Context) {
             "No reason. Just vibes.",
         )
 
+        // T-104 typed-excuse roast: reacts live to what the user types in
+        // the free-text field, once it stops matching a chip. No on-device
+        // LLM/NLP exists here, so "reacting to what they typed" means
+        // keyword pattern-matching against common excuse tropes, not real
+        // understanding — first match wins, "%APP%" is swapped for the
+        // blocked app's label. PLACEHOLDER COPY, same as EXCUSE_CHIPS.
+        private val EXCUSE_KEYWORD_ROASTS = listOf(
+            listOf("work", "job") to "\"Work\"? On %APP%? Sure.",
+            listOf("boss", "email", "meeting") to "Bringing the boss into this. Bold.",
+            listOf("quick", "fast", "sec", "second") to "\"Quick,\" they said. History disagrees.",
+            listOf("bored", "boredom") to "Boredom: the most honest excuse here.",
+            listOf("friend", "someone", "he ", "she ", "they ") to "Blaming someone else already. Confident.",
+            listOf("important", "urgent") to "\"Important\"? On %APP%? Suuure.",
+            listOf("research", "study", "studying") to "Ah yes. The research. Very academic.",
+            listOf("break", "rest", "tired") to "A break. From what, exactly?",
+        )
+
+        // Used when the typed text doesn't match any keyword above — still
+        // reacting to "they're writing a custom one," just without a
+        // specific hook to react to. Picked once per typing session (see
+        // the TextWatcher below), not re-rolled on every keystroke.
+        private val EXCUSE_GENERIC_ROASTS = listOf(
+            "Writing your own? This should be good.",
+            "Freestyling it. Respect the ambition.",
+            "The plot thickens.",
+            "We're listening. Skeptically.",
+            "Going off-script. Noted.",
+        )
+
         private const val COLOR_INK = 0xFF0D0D0D.toInt()
         private const val COLOR_PAPER = 0xFFFFFFFF.toInt()
         private const val COLOR_YELLOW = 0xFFFFE600.toInt()
@@ -255,6 +284,24 @@ class IntentOverlayController(private val context: Context) {
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { bottomMargin = dp(12) })
 
+        // Live reaction to a custom-typed excuse — see EXCUSE_KEYWORD_ROASTS'
+        // doc comment for what "reacting to what they typed" actually means
+        // here (pattern-matching, not real understanding).
+        val typedExcuseRoast = TextView(context).apply {
+            setTextColor(COLOR_RED)
+            textSize = 12f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            visibility = View.GONE
+        }
+        var wasCustomTyping = false
+        var lastGenericRoast: String? = null
+        fun keywordRoastFor(text: String): String? {
+            val lower = text.lowercase()
+            val (_, template) = EXCUSE_KEYWORD_ROASTS.firstOrNull { (keywords, _) -> keywords.any { lower.contains(it) } }
+                ?: return null
+            return template.replace("%APP%", appLabel(pkg))
+        }
+
         val excuseField = EditText(context).apply {
             hint = "...or type your own excuse"
             setTextColor(COLOR_INK)
@@ -273,13 +320,39 @@ class IntentOverlayController(private val context: Context) {
                     if (suppressChipSync) return
                     val text = s?.toString().orEmpty()
                     excuseChipViews.forEach { (e, v) -> v.background = chipBackground(e == text) }
+
+                    if (text.isEmpty() || EXCUSE_CHIPS.contains(text)) {
+                        // Empty, or an exact chip pick (even if reached by
+                        // typing it out by hand) — nothing custom to react
+                        // to yet.
+                        wasCustomTyping = false
+                        typedExcuseRoast.visibility = View.GONE
+                        return
+                    }
+                    val keywordRoast = keywordRoastFor(text)
+                    val roast = keywordRoast ?: run {
+                        // No specific hook this keystroke — reuse the same
+                        // generic line for the rest of this typing session
+                        // instead of re-rolling on every character, or it'd
+                        // flicker line-to-line while they type.
+                        if (!wasCustomTyping || lastGenericRoast == null) {
+                            lastGenericRoast = EXCUSE_GENERIC_ROASTS.random()
+                        }
+                        lastGenericRoast!!
+                    }
+                    wasCustomTyping = true
+                    typedExcuseRoast.text = "✍️ $roast"
+                    typedExcuseRoast.visibility = View.VISIBLE
                 }
             })
         }
         excuseFieldRef = excuseField
         root.addView(excuseField, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = dp(32) })
+        ).apply { bottomMargin = dp(8) })
+        root.addView(typedExcuseRoast, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(24) })
 
         // Spacer pushes the CTA down, matching the Figma layout.
         root.addView(View(context), LinearLayout.LayoutParams(0, 0, 1f))
