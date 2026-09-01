@@ -39,6 +39,20 @@ val posthogApiKey: String = run {
     properties.getProperty("POSTHOG_API_KEY", "")
 }
 
+// T-207: ROAST_PACK_MANIFEST_URL, same local.properties pattern as the
+// keys above — blank is a fully supported state (RoastPackFetchGateway.
+// syncIfNeeded() short-circuits without any network call, RoastEngine
+// stays on the bundled pack forever), not a build error. No manifest is
+// hosted yet as of this commit.
+val roastPackManifestUrl: String = run {
+    val properties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { properties.load(it) }
+    }
+    properties.getProperty("ROAST_PACK_MANIFEST_URL", "")
+}
+
 android {
     namespace = "com.arkarizdev.bonked.core"
     compileSdk = 36
@@ -47,6 +61,7 @@ android {
         minSdk = 29
         buildConfigField("String", "GIPHY_API_KEY", "\"$giphyApiKey\"")
         buildConfigField("String", "POSTHOG_API_KEY", "\"$posthogApiKey\"")
+        buildConfigField("String", "ROAST_PACK_MANIFEST_URL", "\"$roastPackManifestUrl\"")
     }
 
     buildFeatures {

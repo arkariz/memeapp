@@ -23,6 +23,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import com.arkarizdev.bonked.core.roast.RoastPackStore
 import java.io.File
 
 /**
@@ -72,6 +73,11 @@ class RoastOverlayController(private val context: Context) {
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val mainHandler = Handler(Looper.getMainLooper())
     private var overlayView: View? = null
+
+    // T-207: same "packs" dir RoastEngine resolves roast_pack.json against
+    // — a separate RoastPackStore instance is fine, it's a stateless
+    // reader over a fixed directory, not something that needs sharing.
+    private val packStore = RoastPackStore(File(context.filesDir, "packs"))
 
     // Only live while a waiting-room countdown is on screen. Must be
     // cancelled on every teardown, or a callback could fire onFinish() and
@@ -491,24 +497,18 @@ class RoastOverlayController(private val context: Context) {
      *   1. [gifAssetPath] — the user-sourced bundled animated GIF
      *      (ImageDecoder animates multi-frame sources natively, API 28+;
      *      minSdk is 29).
-     *   2. [fallbackAssetRef] — the bundled roast_pack_v1 mascot WebP.
-     *   3. null (section hidden entirely) — a missing meme, at any tier,
+     *   2. [fallbackAssetRef] via the active T-207 remote pack, if one is
+     *      synced and it ships an asset by this ref — same mascot-WebP
+     *      role as tier 3, just a pushed replacement instead of bundled.
+     *   3. [fallbackAssetRef] via the bundled roast_pack_v1 mascot WebP.
+     *   4. null (section hidden entirely) — a missing meme, at any tier,
      *      must never break the unlock flow.
      */
     private fun memeSection(gifAssetPath: String, fallbackAssetRef: String?, cachedGifPath: String? = null): MemeBoxResult? {
         val cachedDrawable = cachedGifPath?.let { loadDrawableFromFile(it) }
         val drawable = cachedDrawable
             ?: loadDrawable(gifAssetPath)
-            ?: fallbackAssetRef?.let { ref ->
-                try {
-                    context.assets.open("roast_pack_v1/$ref.webp").use {
-                        BitmapDrawable(context.resources, BitmapFactory.decodeStream(it))
-                    }
-                } catch (t: Exception) {
-                    Log.w(TAG, "meme fallback failed for assetRef=$ref", t)
-                    null
-                }
-            }
+            ?: fallbackAssetRef?.let { ref -> loadDrawableFromRemotePack(ref) ?: loadDrawableFromBundledMascot(ref) }
             ?: return null
 
         val frame = LinearLayout(context).apply {
@@ -544,6 +544,22 @@ class RoastOverlayController(private val context: Context) {
         val file = File(path)
         if (!file.exists()) null else ImageDecoder.decodeDrawable(ImageDecoder.createSource(file))
     } catch (_: Exception) {
+        null
+    }
+
+    /** T-207: [ref].webp inside the currently-active synced pack, if one exists and ships that asset — null when no pack is synced or it doesn't carry this ref, same null-on-any-failure shape as every other tier here. */
+    private fun loadDrawableFromRemotePack(ref: String): Drawable? {
+        val dir = packStore.currentPackDir() ?: return null
+        return loadDrawableFromFile(File(dir, "$ref.webp").path)
+    }
+
+    /** The bundled roast_pack_v1 mascot WebP — last resort before the meme box hides entirely. */
+    private fun loadDrawableFromBundledMascot(ref: String): Drawable? = try {
+        context.assets.open("roast_pack_v1/$ref.webp").use {
+            BitmapDrawable(context.resources, BitmapFactory.decodeStream(it))
+        }
+    } catch (t: Exception) {
+        Log.w(TAG, "meme fallback failed for assetRef=$ref", t)
         null
     }
 

@@ -133,6 +133,7 @@ class WatcherService : Service() {
                 watchedPkgs = db.watchedAppDao().enabled().map { it.pkg }.toSet()
                 reloadActiveSessions()
                 gifCache.sweepOrphans(db.sessionDao().findAllActive().map { it.id }.toSet())
+                roastEngine.packStore.gcOldPacks() // T-207: pack GC rule — service start only, never mid-swap
                 Log.i(TAG, "watcher started pollMs=$pollMs watched=$watchedPkgs")
             } catch (t: Throwable) {
                 Log.e(TAG, "startup sequence failed", t)

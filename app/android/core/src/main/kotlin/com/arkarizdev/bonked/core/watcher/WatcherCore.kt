@@ -17,6 +17,7 @@ import com.arkarizdev.bonked.core.analytics.AnalyticsFlushWorker
 import com.arkarizdev.bonked.core.data.BonkedDatabase
 import com.arkarizdev.bonked.core.data.SessionEntity
 import com.arkarizdev.bonked.core.data.WatchedAppEntity
+import com.arkarizdev.bonked.core.roast.RoastPackSyncWorker
 import java.time.ZoneId
 
 data class AppInfo(val pkg: String, val label: String)
@@ -103,6 +104,7 @@ object WatcherCore {
         context.startForegroundService(Intent(context, WatcherService::class.java))
         WatchdogWorker.schedule(context)
         AnalyticsFlushWorker.schedule(context)
+        RoastPackSyncWorker.schedule(context) // T-207: daily check for a newer remote copy pack; no-op until a manifest URL is configured
     }
 
     /**

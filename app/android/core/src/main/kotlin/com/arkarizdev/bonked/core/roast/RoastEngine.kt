@@ -1,12 +1,22 @@
 package com.arkarizdev.bonked.core.roast
 
 import android.content.Context
+import android.util.Log
 import org.json.JSONObject
+import java.io.File
 
 /**
  * T-105: loads roast_pack.json (bundled asset — the real, comedy-reviewed
  * pack from assets/roast_pack_v1/), picks a template by tier + intent-text
  * availability, fills its slots, and hands back a ready-to-persist result.
+ *
+ * T-207: the bundled pack is the fallback, not the only source — a
+ * successfully-verified pack pushed via [RoastPackStore] (tech plan §7's
+ * "resolution order") is preferred whenever one is active. Verification
+ * happens at swap time (RoastPackStore.applyDownloadedPack), so this class
+ * only re-checks that the resolved JSON still parses with a non-empty
+ * `templates` array — a defensive re-check against on-disk corruption
+ * between swap and read, not a repeat of the real validation.
  *
  * Precompute discipline (tech plan §5/§7): this class does the picking and
  * filling — it never runs on the roast-display hot path. WatcherService
@@ -22,8 +32,10 @@ import org.json.JSONObject
  * makes this accurate enough that the distinction doesn't matter for a
  * comedy app's purposes.
  */
-class RoastEngine(context: Context) {
+class RoastEngine(private val context: Context) {
     companion object {
+        private const val TAG = "BonkedRoastEngine"
+
         /** How many of the most recent moods to avoid repeating, per pkg. */
         internal const val MOOD_COOLDOWN_SIZE = 2
 
@@ -85,9 +97,32 @@ class RoastEngine(context: Context) {
             context.assets.open(path).bufferedReader().use { it.readText() }
     }
 
-    private val packJson: String by lazy { readAssetText(context, "roast_pack_v1/roast_pack.json") }
+    /** T-207: exposed so RoastOverlayController resolves its asset fallback chain against the same active pack. */
+    val packStore: RoastPackStore by lazy { RoastPackStore(File(context.filesDir, "packs")) }
+
+    private val packJson: String by lazy { resolvePackJson() }
     private val templates: List<RoastTemplate> by lazy { loadTemplates() }
     private val moods: Map<String, List<String>> by lazy { parseMoods(packJson) }
+
+    /**
+     * T-207 resolution order: a synced remote pack, verified again here as
+     * a defensive re-check (on-disk corruption between swap and read is
+     * the only thing this catches — RoastPackStore already verified hash
+     * + schema before ever writing the pointer), falling back to the
+     * bundled asset pack on anything from "no pack synced yet" through
+     * "somehow unreadable now." The app can never end up roast-less.
+     */
+    private fun resolvePackJson(): String {
+        val remoteJson = packStore.currentPackJsonOrNull()
+        if (remoteJson != null) {
+            try {
+                if (JSONObject(remoteJson).getJSONArray("templates").length() > 0) return remoteJson
+            } catch (t: Exception) {
+                Log.w(TAG, "active remote pack failed to parse, falling back to bundled", t)
+            }
+        }
+        return readAssetText(context, "roast_pack_v1/roast_pack.json")
+    }
 
     // Per-pkg last-shown template id, so the same joke doesn't repeat
     // back-to-back (tone guide: "no repeat within last N shown" — N=1 here,
