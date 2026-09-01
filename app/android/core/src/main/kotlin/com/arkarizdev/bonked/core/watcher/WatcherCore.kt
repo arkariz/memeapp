@@ -105,6 +105,7 @@ object WatcherCore {
         WatchdogWorker.schedule(context)
         AnalyticsFlushWorker.schedule(context)
         RoastPackSyncWorker.schedule(context) // T-207: daily check for a newer remote copy pack; no-op until a manifest URL is configured
+        RoastPackSyncWorker.runOnce(context) // ...plus an immediate one-time check now, so a fresh pack doesn't wait up to 24h to land
     }
 
     /**
