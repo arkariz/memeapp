@@ -173,7 +173,7 @@ class WatcherService : Service() {
                 if (ok) {
                     persistActiveSessions()
                     logGrantEvent(kind = "GRANT", pkg = pkg, minutes = minutes, extensionsSoFar = 0, hasIntentText = !intentText.isNullOrBlank(), now = now)
-                    precomputeRoast(pkg, intentText, grantedMin = minutes, extensionsSoFar = 0)
+                    precomputeRoast(pkg, grantedMin = minutes, extensionsSoFar = 0)
                     Log.i(TAG, "debugGrant persisted pkg=$pkg")
                 }
             } catch (t: Throwable) {
@@ -301,7 +301,6 @@ class WatcherService : Service() {
                                 )
                                 precomputeRoast(
                                     pkg = session.pkg,
-                                    intentText = extendedSession?.intentText,
                                     grantedMin = additionalMinutes,
                                     extensionsSoFar = extendedSession?.extensions ?: 1,
                                 )
@@ -362,7 +361,7 @@ class WatcherService : Service() {
                         try {
                             persistActiveSessions()
                             logGrantEvent(kind = "GRANT", pkg = pkg, minutes = minutes, extensionsSoFar = 0, hasIntentText = !intentText.isNullOrBlank(), now = now)
-                            precomputeRoast(pkg, intentText, grantedMin = minutes, extensionsSoFar = 0)
+                            precomputeRoast(pkg, grantedMin = minutes, extensionsSoFar = 0)
                         } catch (t: Throwable) {
                             Log.e(TAG, "persist/precompute after grant failed", t)
                         }
@@ -424,14 +423,13 @@ class WatcherService : Service() {
      * to attach to isn't meaningful, so this silently no-ops if not found
      * rather than inventing a placeholder sessionId.
      */
-    private suspend fun precomputeRoast(pkg: String, intentText: String?, grantedMin: Int, extensionsSoFar: Int) {
+    private suspend fun precomputeRoast(pkg: String, grantedMin: Int, extensionsSoFar: Int) {
         val sessionRow = db.sessionDao().findActive(pkg) ?: run {
             Log.w(TAG, "precomputeRoast: no session row for pkg=$pkg, skipping")
             return
         }
         val result = roastEngine.precompute(
             pkg = pkg,
-            intentText = intentText,
             grantedMin = grantedMin,
             elapsedMin = grantedMin,
             extensionsSoFar = extensionsSoFar,

@@ -10,6 +10,7 @@ package com.arkarizdev.bonked.core.watcher
 data class Session(
     val pkg: String,
     var state: SessionState = SessionState.IDLE,
+    /** Captured for analytics/reflection only — no roast template reads this. See RoastEngine's doc comment. */
     var intentText: String? = null,
     var grantedMin: Int? = null,
     var expiryAt: Long? = null,

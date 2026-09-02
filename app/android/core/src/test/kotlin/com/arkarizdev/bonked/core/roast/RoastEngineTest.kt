@@ -7,7 +7,6 @@ import org.junit.Test
 private fun template(id: String, asset: String) = RoastTemplate(
     id = id,
     tier = 1,
-    requiresIntentText = false,
     line1 = "line1",
     line2 = "line2",
     degradeLine1 = "d1",

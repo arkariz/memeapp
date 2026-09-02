@@ -1,21 +1,9 @@
 {
-  "version": 2,
+  "version": 3,
   "schema": "grudge.roast_pack.v1",
-  "generated": "2026-08-21",
-  "notes": "v2: full copy rewrite (48 templates, up from 40) — leaner toward deadpan/anti-joke brevity and self-aware app-voice, replacing v1's wordier metaphor style. Same TONE_GUIDE.md rules apply unchanged (roast the action, never the person; escalation gets drier, not meaner). Template count increased per tier specifically to make the per-mood cooldown in RoastEngine (T-2xx follow-up) actually effective on long extension chains. The 8 illustrated assets (T-005) are the offline fallback layer; primary is a live GIPHY GIF fetched at grant time using the 'moods' map below (tech plan §7c, provider swapped from the discontinued Tenor to GIPHY on 2026-08-21). Every template's 'asset' id doubles as a mood id, so no per-template changes were needed to add live GIFs. No third-party or copyrighted image files ship in the APK; live GIFs are fetched at runtime through GIPHY's API, never bundled or redistributed.",
+  "generated": "2026-09-01",
+  "notes": "v3: dropped every template that quoted the user's own excuse text back at them (33 templates, down from 48's 40-quoting/... split). A curated excuse chip reads fine embedded in a sentence, but a free-typed excuse has no such guarantee, and gating template selection on chip-vs-typed still left the joke dependent on arbitrary user phrasing — simpler and safer to never grammatically depend on it at all. The excuse-capture UI itself (chips + free text + live roast-while-typing) is unchanged; its text is just no longer read by any roast template. v2's other notes still apply: leaner toward deadpan/anti-joke brevity and self-aware app-voice. Same TONE_GUIDE.md rules apply unchanged (roast the action, never the person; escalation gets drier, not meaner). The 8 illustrated assets (T-005) are the offline fallback layer; primary is a live GIPHY GIF fetched at grant time using the 'moods' map below (tech plan §7c, provider swapped from the discontinued Tenor to GIPHY on 2026-08-21). Every template's 'asset' id doubles as a mood id, so no per-template changes were needed to add live GIFs. No third-party or copyrighted image files ship in the APK; live GIFs are fetched at runtime through GIPHY's API, never bundled or redistributed.",
   "templates": [
-
-    { "id": "t1_01", "tier": 1, "requires": ["intent_text"],
-      "line1": "“{intent}.”",
-      "line2": "BRO. IT'S BEEN {actual_min} MINUTES.",
-      "degrade": ["“{intent}.”", "{actual_min} min. bro."],
-      "asset": "side_eye", "tone": ["default"] },
-
-    { "id": "t1_02", "tier": 1, "requires": ["intent_text"],
-      "line1": "YOU SAID “{intent}.”",
-      "line2": "THE CLOCK DISAGREES. {actual_min} MIN.",
-      "degrade": ["You said “{intent}.”", "Clock disagrees: {actual_min} min."],
-      "asset": "unimpressed_cat", "tone": ["default"] },
 
     { "id": "t1_03", "tier": 1, "requires": [],
       "line1": "{granted_min} MINUTES REQUESTED.",
@@ -29,23 +17,11 @@
       "degrade": ["This is the app.", "{actual_min} min. that's it."],
       "asset": "side_eye", "tone": ["default"] },
 
-    { "id": "t1_05", "tier": 1, "requires": ["intent_text"],
-      "line1": "“{intent}” — YOU, {actual_min} MINUTES AGO.",
-      "line2": "STILL HOLDS UP. MOSTLY.",
-      "degrade": ["“{intent}” — you, {actual_min} min ago.", "Mostly holds up."],
-      "asset": "side_eye", "tone": ["default"] },
-
     { "id": "t1_06", "tier": 1, "requires": [],
       "line1": "{actual_min} MINUTES.",
       "line2": "THAT'S A NUMBER NOW. WE BOTH SAW IT HAPPEN.",
       "degrade": ["{actual_min} min.", "We both saw it happen."],
       "asset": "philosoraptor", "tone": ["default"] },
-
-    { "id": "t1_07", "tier": 1, "requires": ["intent_text"],
-      "line1": "“{intent}.” A PROMISE, ONCE.",
-      "line2": "{actual_min} MINUTES LATER, WE DON'T TALK ABOUT IT.",
-      "degrade": ["“{intent}.” a promise, once.", "{actual_min} min later. moving on."],
-      "asset": "unimpressed_cat", "tone": ["default"] },
 
     { "id": "t1_08", "tier": 1, "requires": [],
       "line1": "{actual_min} MINUTES.",
@@ -53,23 +29,11 @@
       "degrade": ["{actual_min} min.", "Algorithm won this round."],
       "asset": "stonks", "tone": ["default"] },
 
-    { "id": "t1_09", "tier": 1, "requires": ["intent_text"],
-      "line1": "PAST YOU SAID “{intent}.”",
-      "line2": "PRESENT YOU HAS NOTES BUT NO DEFENSE.",
-      "degrade": ["Past you: “{intent}.”", "Present you: no defense."],
-      "asset": "philosoraptor", "tone": ["default"] },
-
     { "id": "t1_10", "tier": 1, "requires": [],
       "line1": "STILL GOING.",
       "line2": "THE PHONE NOTICED BEFORE YOU DID.",
       "degrade": ["Still going.", "Phone noticed first."],
       "asset": "surprised", "tone": ["default"] },
-
-    { "id": "t1_11", "tier": 1, "requires": ["intent_text"],
-      "line1": "“{intent}.” SURE.",
-      "line2": "{actual_min} MINUTES OF “SURE.”",
-      "degrade": ["“{intent}.” sure.", "{actual_min} min of sure."],
-      "asset": "unimpressed_cat", "tone": ["default"] },
 
     { "id": "t1_12", "tier": 1, "requires": [],
       "line1": "GRANTED: {granted_min}. TAKEN: {actual_min}.",
@@ -77,35 +41,17 @@
       "degrade": ["Granted {granted_min}, took {actual_min}.", "The gap has a name."],
       "asset": "confused_math", "tone": ["default"] },
 
-    { "id": "t1_13", "tier": 1, "requires": ["intent_text"],
-      "line1": "“{intent}.”",
-      "line2": "{actual_min} MINUTES LATER, STILL A GREAT SENTENCE.",
-      "degrade": ["“{intent}.”", "{actual_min} min later, still great."],
-      "asset": "this_is_fine", "tone": ["default"] },
-
     { "id": "t1_14", "tier": 1, "requires": [],
       "line1": "{actual_min} MINUTES.",
       "line2": "THIS IS FINE. THAT'S THE WHOLE STATEMENT.",
       "degrade": ["{actual_min} min.", "This is fine. that's it."],
       "asset": "this_is_fine", "tone": ["default"] },
 
-    { "id": "t1_15", "tier": 1, "requires": ["intent_text"],
-      "line1": "“{intent}” WAS THE PLAN.",
-      "line2": "{actual_min} MINUTES WAS A DIFFERENT PLAN ENTIRELY.",
-      "degrade": ["“{intent}” was the plan.", "{actual_min} min: a different plan."],
-      "asset": "surprised", "tone": ["default"] },
-
     { "id": "t1_16", "tier": 1, "requires": [],
       "line1": "THIS IS AN APP THAT LIMITS APPS.",
       "line2": "IT'S {actual_min} MINUTES INTO NOT WORKING.",
       "degrade": ["An app that limits apps.", "{actual_min} min into not working."],
       "asset": "waiting", "tone": ["default"] },
-
-    { "id": "t1_17", "tier": 1, "requires": ["intent_text"],
-      "line1": "YOU TOLD THIS APP “{intent}.”",
-      "line2": "IT BELIEVED YOU. THAT WAS ITS FIRST MISTAKE.",
-      "degrade": ["You told this app “{intent}.”", "It believed you. mistake."],
-      "asset": "side_eye", "tone": ["default"] },
 
     { "id": "t1_18", "tier": 1, "requires": [],
       "line1": "{actual_min} MINUTES.",
@@ -117,12 +63,6 @@
       "line1": "EXTENSION #{extension_count}.",
       "line2": "NOTED. MOVING ON.",
       "degrade": ["Extension #{extension_count}.", "Noted. moving on."],
-      "asset": "waiting", "tone": ["default"] },
-
-    { "id": "t2_02", "tier": 2, "requires": ["intent_text"],
-      "line1": "STILL ON “{intent}.”",
-      "line2": "{actual_min} MINUTES PAST WHEN THAT STOPPED BEING TRUE.",
-      "degrade": ["Still on “{intent}.”", "{actual_min} min past true."],
       "asset": "waiting", "tone": ["default"] },
 
     { "id": "t2_03", "tier": 2, "requires": [],
@@ -137,12 +77,6 @@
       "degrade": ["Extension #{extension_count}.", "The streak is waiting."],
       "asset": "side_eye", "tone": ["default"] },
 
-    { "id": "t2_05", "tier": 2, "requires": ["intent_text"],
-      "line1": "“{intent}” IS IN OVERTIME.",
-      "line2": "{actual_min} MINUTES IN. NO ONE'S WINNING.",
-      "degrade": ["“{intent}”: overtime.", "{actual_min} min, no winner."],
-      "asset": "waiting", "tone": ["default"] },
-
     { "id": "t2_06", "tier": 2, "requires": [],
       "line1": "ROUND TWO.",
       "line2": "SAME LIMIT. QUIETER EXCUSE.",
@@ -154,12 +88,6 @@
       "line2": "THE APP IS STARTING TO KEEP RECEIPTS.",
       "degrade": ["Still over, again.", "App is keeping receipts."],
       "asset": "confused_math", "tone": ["default"] },
-
-    { "id": "t2_08", "tier": 2, "requires": ["intent_text"],
-      "line1": "“{intent}” IS DOING A LOT OF WORK TODAY.",
-      "line2": "RESPECT THE COMMITMENT, IF NOTHING ELSE.",
-      "degrade": ["“{intent}” is working overtime.", "Respect the commitment."],
-      "asset": "philosoraptor", "tone": ["default"] },
 
     { "id": "t2_09", "tier": 2, "requires": [],
       "line1": "THIS APP GRANTED {extension_count} EXTENSIONS.",
@@ -173,12 +101,6 @@
       "degrade": ["Still here.", "“a few more” was {actual_min} min ago."],
       "asset": "waiting", "tone": ["default"] },
 
-    { "id": "t2_11", "tier": 2, "requires": ["intent_text"],
-      "line1": "“{intent},” TAKE TWO.",
-      "line2": "THE SEQUEL IS {actual_min} MINUTES LONG.",
-      "degrade": ["“{intent},” take two.", "Sequel: {actual_min} min."],
-      "asset": "this_is_fine", "tone": ["default"] },
-
     { "id": "t2_12", "tier": 2, "requires": [],
       "line1": "EXTENSION #{extension_count}.",
       "line2": "THIS IS A LIFESTYLE NOW, NOT A SESSION.",
@@ -191,23 +113,11 @@
       "degrade": ["Over budget. officially.", "Budget's fine. quiet."],
       "asset": "unimpressed_cat", "tone": ["default"] },
 
-    { "id": "t2_14", "tier": 2, "requires": ["intent_text"],
-      "line1": "“{intent}.”",
-      "line2": "SURE. OKAY. EXTENSION #{extension_count}.",
-      "degrade": ["“{intent}.”", "okay. #{extension_count}."],
-      "asset": "side_eye", "tone": ["default"] },
-
     { "id": "t2_15", "tier": 2, "requires": [],
       "line1": "EXTENSION #{extension_count}.",
       "line2": "AGAIN?",
       "degrade": ["Extension #{extension_count}.", "again?"],
       "asset": "waiting", "tone": ["default"] },
-
-    { "id": "t2_16", "tier": 2, "requires": ["intent_text"],
-      "line1": "THIS APP EXISTS SO “{intent}” DOESN'T HAPPEN.",
-      "line2": "IT'S HAPPENING. {actual_min} MINUTES OF IT.",
-      "degrade": ["App exists to stop “{intent}.”", "Happening anyway. {actual_min} min."],
-      "asset": "this_is_fine", "tone": ["default"] },
 
     { "id": "t3_01", "tier": 3, "requires": [],
       "line1": "EXTENSION #{extension_count}.",

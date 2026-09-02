@@ -4,7 +4,6 @@ package com.arkarizdev.bonked.core.roast
 data class RoastTemplate(
     val id: String,
     val tier: Int,
-    val requiresIntentText: Boolean,
     val line1: String,
     val line2: String,
     val degradeLine1: String,

@@ -7,8 +7,15 @@ import java.io.File
 
 /**
  * T-105: loads roast_pack.json (bundled asset — the real, comedy-reviewed
- * pack from assets/roast_pack_v1/), picks a template by tier + intent-text
- * availability, fills its slots, and hands back a ready-to-persist result.
+ * pack from assets/roast_pack_v1/), picks a template by tier, fills its
+ * slots, and hands back a ready-to-persist result.
+ *
+ * No template quotes the user's own intent text back at them (chip or
+ * free-typed) — a curated chip reads fine ("Just checking the weather,
+ * basically." embeds cleanly), but free-typed text has no such guarantee,
+ * and gating template *selection* on the source still left the joke
+ * dependent on arbitrary user phrasing. Simpler and safer to just never
+ * grammatically depend on it.
  *
  * T-207: the bundled pack is the fallback, not the only source — a
  * successfully-verified pack pushed via [RoastPackStore] (tech plan §7's
@@ -153,14 +160,12 @@ class RoastEngine(private val context: Context) {
      */
     fun precompute(
         pkg: String,
-        intentText: String?,
         grantedMin: Int,
         elapsedMin: Int,
         extensionsSoFar: Int,
     ): PrecomputeResult? {
         val tier = tierFor(extensionsSoFar)
-        val hasIntent = !intentText.isNullOrBlank()
-        val candidates = templates.filter { it.tier == tier && (!it.requiresIntentText || hasIntent) }
+        val candidates = templates.filter { it.tier == tier }
         if (candidates.isEmpty()) return null
 
         val avoidingId = lastTemplateId[pkg]
@@ -175,7 +180,6 @@ class RoastEngine(private val context: Context) {
 
         val overageMin = (elapsedMin - grantedMin).coerceAtLeast(0)
         val slots = mapOf(
-            "intent" to (intentText ?: ""),
             "actual_min" to elapsedMin.toString(),
             "granted_min" to grantedMin.toString(),
             "overage_min" to overageMin.toString(),
@@ -201,14 +205,11 @@ class RoastEngine(private val context: Context) {
         val result = mutableListOf<RoastTemplate>()
         for (i in 0 until array.length()) {
             val obj = array.getJSONObject(i)
-            val requires = obj.getJSONArray("requires")
-            val requiresIntentText = (0 until requires.length()).any { requires.getString(it) == "intent_text" }
             val degrade = obj.getJSONArray("degrade")
             result.add(
                 RoastTemplate(
                     id = obj.getString("id"),
                     tier = obj.getInt("tier"),
-                    requiresIntentText = requiresIntentText,
                     line1 = obj.getString("line1"),
                     line2 = obj.getString("line2"),
                     degradeLine1 = degrade.getString(0),
