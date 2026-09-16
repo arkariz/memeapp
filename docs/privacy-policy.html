@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bonked Privacy Policy</title>
+<meta name="description" content="Public privacy policy for Bonked — what the screen-time limiter app collects, shares with GIPHY/PostHog, and never touches.">
+<style>
+  :root {
+    --bg: #faf9f6;
+    --surface: #ffffff;
+    --text: #1c1b1a;
+    --text-muted: #6b665f;
+    --border: #e6e2da;
+    --accent: #d84a1f;
+    --accent-soft: #fbeae2;
+    --mono-bg: #f2efe8;
+    --good: #2f6f4f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151310;
+      --surface: #1d1a16;
+      --text: #f1ede6;
+      --text-muted: #a89f91;
+      --border: #332d24;
+      --accent: #ff7a48;
+      --accent-soft: #2e2119;
+      --mono-bg: #241f18;
+      --good: #6fbf94;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151310;
+    --surface: #1d1a16;
+    --text: #f1ede6;
+    --text-muted: #a89f91;
+    --border: #332d24;
+    --accent: #ff7a48;
+    --accent-soft: #2e2119;
+    --mono-bg: #241f18;
+    --good: #6fbf94;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); }
+  body {
+    color: var(--text);
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    line-height: 1.6;
+    padding-inline: 20px;
+  }
+  img { max-width: 100%; }
+  a { color: var(--accent); }
+
+  .page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding-block: 48px 80px;
+  }
+
+  .kicker {
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  h1 {
+    font-family: "Fraunces", "Source Serif 4", Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(32px, 6vw, 44px);
+    line-height: 1.08;
+    margin: 10px 0 6px;
+    text-wrap: balance;
+  }
+
+  .subtitle {
+    font-family: "Inter", system-ui, sans-serif;
+    color: var(--text-muted);
+    font-size: 15px;
+    margin: 0 0 28px;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 24px;
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 13px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding-block: 14px;
+    margin-bottom: 32px;
+  }
+  .meta-row strong { color: var(--text); font-weight: 600; }
+
+  .glance {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 24px;
+    margin-bottom: 40px;
+  }
+  .glance h2 {
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 14px;
+    font-weight: 600;
+  }
+  .glance ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+  }
+  .glance li {
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 14.5px;
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+  }
+  .dot {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--good);
+    margin-top: 7px;
+  }
+  .dot.warn { background: var(--accent); }
+
+  nav.toc {
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 13.5px;
+    margin-bottom: 44px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+  }
+  nav.toc a { text-decoration: none; color: var(--text-muted); border-bottom: 1px dotted var(--border); }
+  nav.toc a:hover { color: var(--accent); border-color: var(--accent); }
+
+  section { margin-bottom: 40px; }
+  section h2 {
+    font-family: "Fraunces", "Source Serif 4", Georgia, serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 14px;
+    padding-top: 4px;
+    scroll-margin-top: 20px;
+  }
+  section h3 {
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 20px 0 8px;
+  }
+  section p { margin: 0 0 14px; max-width: 65ch; }
+  section ul { margin: 0 0 14px; padding-left: 22px; }
+  section li { margin-bottom: 6px; max-width: 62ch; }
+
+  code, .mono {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.86em;
+    background: var(--mono-bg);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 13.5px;
+    margin: 14px 0 20px;
+  }
+  table.data caption {
+    text-align: left;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  table.data th, table.data td {
+    text-align: left;
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  table.data th { color: var(--text-muted); font-weight: 600; }
+  .tablewrap { overflow-x: auto; }
+
+  .pill {
+    display: inline-block;
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .pill.ondevice { color: var(--good); background: color-mix(in srgb, var(--good) 16%, var(--surface)); }
+  .pill.third { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--accent); }
+
+  hr.rule {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 44px 0;
+  }
+
+  footer {
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  footer a { color: var(--text-muted); }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+</head>
+<body>
+<div class="page">
+  <p class="kicker">Privacy Policy</p>
+  <h1>Bonked</h1>
+  <p class="subtitle">Bro, put the phone down. Here's exactly what the app does — and doesn't do — with your data.</p>
+
+  <div class="meta-row">
+    <span><strong>Effective</strong> September 16, 2026</span>
+    <span><strong>Package</strong> <span class="mono">com.arkarizdev.bonked</span></span>
+    <span><strong>Contact</strong> <a href="mailto:arkariz.studio@gmail.com">arkariz.studio@gmail.com</a></span>
+  </div>
+
+  <div class="glance">
+    <h2>At a glance</h2>
+    <ul>
+      <li><span class="dot"></span><span>No account, no sign-in, no ads. Your watched-app list and screen-time data stay on your device — they are never uploaded to us or anyone else.</span></li>
+      <li><span class="dot"></span><span>A handful of anonymous, no-free-text usage events (like "a roast was shown, tier 2") may be sent to our analytics provider, PostHog, only if we've configured it for this build.</span></li>
+      <li><span class="dot warn"></span><span>When Bonked shows you a reaction GIF, it sends one fixed word — like "stonks" — to GIPHY's public search API. That's the only thing that ever leaves your device tied to a third party.</span></li>
+      <li><span class="dot"></span><span>What you type into the app (like why you're opening an app) never leaves your device and is never sent to GIPHY, PostHog, or us.</span></li>
+      <li><span class="dot"></span><span>Uninstalling the app deletes everything it stored. There's no server-side account to delete.</span></li>
+    </ul>
+  </div>
+
+  <nav class="toc">
+    <a href="#collect">What we collect</a>
+    <a href="#thirdparty">Third parties</a>
+    <a href="#permissions">Permissions</a>
+    <a href="#storage">Storage &amp; retention</a>
+    <a href="#notcollect">What we don't collect</a>
+    <a href="#children">Children</a>
+    <a href="#changes">Changes</a>
+    <a href="#contact">Contact</a>
+  </nav>
+
+  <section id="collect">
+    <h2>What Bonked collects</h2>
+    <p>Bonked is a personal screen-time limiter: you pick which apps to watch and set a daily time budget for each. To do that, the app needs to know when a watched app is open and for how long.</p>
+
+    <h3>Usage of the apps you choose to watch</h3>
+    <p>Using Android's Usage Access permission, Bonked detects when one of <em>your own chosen</em> watched apps comes to the foreground and measures how long you've been in it, purely to show you a reminder when your own limit is hit. This is read locally with <span class="mono">UsageStatsManager</span> — Bonked never reads usage data for apps you haven't explicitly added to your watch list, and this data is not uploaded anywhere.</p>
+
+    <h3>Anonymous product analytics</h3>
+    <p>If the build you're running has analytics configured, Bonked logs a small, fixed set of events — things like "onboarding step completed" or "a limit reminder was shown, and how the session ended" — to help us understand whether the app is working. Every event is checked in code against a strict allowlist before it can be sent; nothing outside that list is ever included, and free text is never one of the allowed fields.</p>
+    <div class="tablewrap">
+      <table class="data">
+        <caption>Complete allowlist — the only fields any event may ever carry</caption>
+        <thead><tr><th>Event</th><th>Fields</th><th>Scope</th></tr></thead>
+        <tbody>
+          <tr><td>onboarding_step</td><td class="mono">step, ok</td><td class="pill ondevice">on-device → optional analytics</td></tr>
+          <tr><td>grant</td><td class="mono">pkg, min, has_intent</td><td class="pill ondevice">on-device → optional analytics</td></tr>
+          <tr><td>extension</td><td class="mono">pkg, n</td><td class="pill ondevice">on-device → optional analytics</td></tr>
+          <tr><td>roast_shown</td><td class="mono">tier, latency_ms</td><td class="pill ondevice">on-device → optional analytics</td></tr>
+          <tr><td>roast_outcome</td><td class="mono">outcome, secs_to_action</td><td class="pill ondevice">on-device → optional analytics</td></tr>
+          <tr><td>session_end</td><td class="mono">outcome, overage_s</td><td class="pill ondevice">on-device → optional analytics</td></tr>
+          <tr><td>card_generated / card_shared</td><td class="mono">type</td><td class="pill ondevice">on-device → optional analytics</td></tr>
+          <tr><td>watch_down</td><td class="mono">reason, oem, uptime_s</td><td class="pill ondevice">on-device → optional analytics</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><span class="mono">pkg</span> is the package name of a watched app you yourself added in the app picker — it's not third-party personal data, and it's already covered by the Usage Access permission above. None of these fields identify you personally: there's no name, email, phone number, or advertising ID attached to any event, only an anonymous, on-device identifier.</p>
+  </section>
+
+  <section id="thirdparty">
+    <h2>Third parties Bonked talks to</h2>
+
+    <h3>GIPHY — reaction GIFs</h3>
+    <p><span class="pill third">shared</span> When a roast fires, Bonked sends one short, fixed "mood" label — one of about eight bundled strings, such as <span class="mono">side eye</span> or <span class="mono">stonks</span> — to GIPHY's public search API (<span class="mono">api.giphy.com</span>) over HTTPS, to fetch a matching reaction GIF. This is not your usage data and not anything you typed; it's chosen purely by which roast template fired. GIPHY's own "content was displayed" callback also fires as part of loading that GIF, which is GIPHY tracking its own content, not something Bonked adds. See <a href="https://support.giphy.com/hc/en-us/articles/360022684992" target="_blank" rel="noopener">GIPHY's privacy policy</a>.</p>
+
+    <h3>PostHog — anonymous analytics</h3>
+    <p><span class="pill third">shared, if enabled</span> Only the allowlisted, non-identifying events listed above may be sent to PostHog, our analytics provider, and only in builds where we've configured it. See <a href="https://posthog.com/privacy" target="_blank" rel="noopener">PostHog's privacy policy</a>.</p>
+
+    <h3>GitHub Releases — roast pack updates</h3>
+    <p><span class="pill ondevice">no user data sent</span> Bonked periodically checks a static file hosted on GitHub Releases to see whether new roast jokes are available, and downloads them if so. This is a plain, anonymous file download — no usage data, identifiers, or anything about you is included in that request.</p>
+  </section>
+
+  <section id="permissions">
+    <h2>Permissions, and why</h2>
+    <div class="tablewrap">
+      <table class="data">
+        <thead><tr><th>Permission</th><th>Used for</th></tr></thead>
+        <tbody>
+          <tr><td>Usage Access</td><td>Detecting when a watched app is open and for how long, so your own limit can be enforced. On-device only.</td></tr>
+          <tr><td>Display over other apps</td><td>Showing the limiter/roast reminder screen on top of the watched app.</td></tr>
+          <tr><td>Post notifications</td><td>Letting the background watcher run reliably and, where relevant, notifying you.</td></tr>
+          <tr><td>Foreground service</td><td>Keeping the watcher running so limits are enforced even when Bonked itself isn't open.</td></tr>
+          <tr><td>Ignore battery optimizations</td><td>Preventing the OS from killing the watcher mid-session.</td></tr>
+          <tr><td>Internet / network state</td><td>Fetching reaction GIFs from GIPHY, checking for roast pack updates, and sending analytics events (if configured).</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Bonked never requests broad package visibility — it only ever resolves the apps you could plausibly pick in the app picker via Android's standard launcher-app query, not full device package access.</p>
+  </section>
+
+  <section id="storage">
+    <h2>Storage &amp; retention</h2>
+    <p>Everything Bonked stores — your watched app list, limits, usage history, and any queued analytics events — lives in a local database on your device. There is no cloud account and no server-side copy. Uninstalling Bonked removes all of it. Analytics events, when enabled, are queued on-device and sent in small batches; once sent, we retain them only as long as needed to understand product usage, and never resell or repurpose them.</p>
+  </section>
+
+  <section id="notcollect">
+    <h2>What Bonked does <em>not</em> collect</h2>
+    <ul>
+      <li>No name, email, phone number, or any account — Bonked has no sign-in.</li>
+      <li>No location, contacts, financial or health information.</li>
+      <li>No photos, videos, microphone, or camera access.</li>
+      <li>No message content, browsing history, or content from apps other than the on/off timing of the specific apps you chose to watch.</li>
+      <li>Anything you type into Bonked (like a reason for opening an app) stays on your device — it is never sent to GIPHY, PostHog, or anyone else.</li>
+    </ul>
+  </section>
+
+  <section id="children">
+    <h2>Children's privacy</h2>
+    <p>Bonked is a general-audience productivity tool and is not directed at children under 13. It does not knowingly collect personal information from children.</p>
+  </section>
+
+  <section id="changes">
+    <h2>Changes to this policy</h2>
+    <p>If what Bonked collects or shares changes, this page will be updated and the effective date above will change accordingly. Meaningful changes will also be reflected in the app's store listing.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section id="contact">
+    <h2>Contact</h2>
+    <p>Bonked is an independent, solo-developed app. Questions about this policy or your data can be sent to <a href="mailto:arkariz.studio@gmail.com">arkariz.studio@gmail.com</a>.</p>
+  </section>
+
+  <footer>
+    Bonked — Bro, Put the Phone Down. This page is the public privacy policy referenced from the app's Play Store listing.
+  </footer>
+</div>
+</body>
+</html>
